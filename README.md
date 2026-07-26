@@ -1,13 +1,13 @@
-# FieldSignal
+# Outpost
 
 **Always-on clinical triage and outbreak surveillance for disconnected field hospitals —
 running entirely on the Dell Pro Max with GB10.**
 
 A clinician dictates a consultation, uploads an X-ray, writes a note. Everything lands in a
-watched folder on the box. FieldSignal runs continuously and unprompted: translates,
-scores the film, maps the presentation onto a WHO syndromic case definition, links the
-patient into a longitudinal graph, watches for clusters across days, and escalates to a
-human when a threshold trips.
+watched folder on the box. Outpost runs continuously and unprompted: translates, scores
+the film, maps the presentation onto a WHO syndromic case definition, links the patient
+into a longitudinal graph, watches for clusters across days, and escalates to a human when
+a threshold trips.
 
 **No patient data leaves the box.** The only thing that crosses the wire — after a human
 approves it — is an aggregate count: *"eleven cases of acute watery diarrhoea, sector 4,
@@ -16,7 +16,7 @@ past 72 hours, rising."* Never a record.
 > It triages and prioritises. **It never diagnoses.** Every output is a draft for a
 > clinician, and every escalation path has a human gate.
 
-Hackathon build for Dell x NVIDIA Local AI. `FieldSignal` is a working name.
+Hackathon build for Dell x NVIDIA Local AI.
 
 ---
 

@@ -1,4 +1,4 @@
-# Copilot instructions — FieldSignal
+# Copilot instructions — Outpost
 
 **`AGENTS.md` in the repository root is the canonical standing context. Read it first.**
 It is loaded automatically alongside this file; everything below is a deliberately short

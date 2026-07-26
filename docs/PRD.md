@@ -1,4 +1,4 @@
-# FieldSignal — Technical Execution PRD
+# Outpost — Technical Execution PRD
 
 **Version:** 1.0 · Hackathon build · Dell x NVIDIA Local AI on Dell Pro Max with GB10
 **Timebox:** Demo video + project submission by 18:30. Pitch deck by 19:00. Code freeze at
@@ -201,7 +201,7 @@ product needs four models hot at once, and that's the better use of the memory."
 ### F-10 detail: egress payload
 
 ```json
-{"syndrome":"acute_watery_diarrhoea","catchment":"sector-4","count":11,"window_hours":72,"trend":"rising","site_id":"FS-001"}
+{"syndrome":"acute_watery_diarrhoea","catchment":"sector-4","count":11,"window_hours":72,"trend":"rising","site_id":"OP-001"}
 ```
 
 No names, no ages, no free text, no identifiers. Display `bytes_sent` in the UI next to
@@ -284,7 +284,7 @@ Tracked in `DECISIONS.md`.
 
 1. Demo language — French or Arabic? (Drives ASR testing.)
 2. Final Nemotron variant and actual resident size after quantization.
-3. Product name (FieldSignal is a placeholder).
+3. ~~Product name.~~ **Resolved: Outpost.**
 4. Where does the mock egress receiver live — a teammate's laptop on the venue network, or
    a second local port? (Laptop is more convincing on camera.)
 5. Who reads the pitch? Decide now; that person should not be debugging at 17:00.

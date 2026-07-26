@@ -1,4 +1,4 @@
-# AGENTS.md — FieldSignal
+# AGENTS.md — Outpost
 
 > **Read this first, every session.** This file is the standing context for every AI agent
 > and every human working in this repository. If something here conflicts with a request,
@@ -6,7 +6,7 @@
 
 ## What we are building
 
-**FieldSignal** — an always-on clinical triage and outbreak-surveillance agent for
+**Outpost** — an always-on clinical triage and outbreak-surveillance agent for
 disconnected field hospitals, running **entirely on a Dell Pro Max with GB10** (Grace
 Blackwell, 128GB coherent unified memory, DGX OS / Ubuntu 24.04 base).
 
@@ -17,7 +17,9 @@ This is a **hackathon build** (Dell x NVIDIA Local AI). It is optimised for a 5-
 live demo and a 3-minute recorded video, not for production longevity. Judge every
 decision against the rubric in `docs/ONE_PAGER.md` §Rubric alignment.
 
-`FieldSignal` is a working name. See `docs/DECISIONS.md` Q3.
+The product is named **Outpost** (locked — `docs/DECISIONS.md` D10). Use it verbatim in
+UI strings, the deck, and the video. Package/module namespace is `outpost`; environment
+variables are prefixed `OUTPOST_`.
 
 ## Current state — update this section when it changes
 
@@ -26,12 +28,13 @@ decision against the rubric in `docs/ONE_PAGER.md` §Rubric alignment.
 
 - **Docs:** complete. One-pager, PRD, architecture contracts, build plan, demo runbook and
   decision log are all in `docs/`.
-- **Code:** **none yet.** No `fieldsignal/` package, no `scripts/`, no `mock_receiver/`.
+- **Code:** **none yet.** No `outpost/` package, no `scripts/`, no `mock_receiver/`.
   The layout in `docs/ARCHITECTURE.md` §1 is the *target*, not the current tree.
 - **Box:** not provisioned in this repo's context. NemoClaw onboarding, model loading and
   the egress allowlist are Infra tasks tracked in `docs/BUILD_PLAN.md`.
-- **Blocking:** open questions Q1–Q5 in `docs/DECISIONS.md` are unresolved. Q1 (demo
-  language) and Q2 (Nemotron variant) gate real work — flag them rather than guessing.
+- **Blocking:** open questions Q1, Q2, Q4, Q5 in `docs/DECISIONS.md` are unresolved. Q1
+  (demo language) and Q2 (Nemotron variant) gate real work — flag them rather than
+  guessing. Q3 (product name) is resolved: **Outpost**.
 
 ## Commands
 
@@ -40,9 +43,9 @@ tooling, record the verified command here.
 
 | Task | Command |
 | --- | --- |
-| Watcher + workers | _not yet implemented_ — target: `python -m fieldsignal.watcher` |
-| Agent heartbeat | _not yet implemented_ — target: `python -m fieldsignal.agent.heartbeat` |
-| Web UI | _not yet implemented_ — target: `uvicorn fieldsignal.web.app:app --host 0.0.0.0 --port 8080` |
+| Watcher + workers | _not yet implemented_ — target: `python -m outpost.watcher` |
+| Agent heartbeat | _not yet implemented_ — target: `python -m outpost.agent.heartbeat` |
+| Web UI | _not yet implemented_ — target: `uvicorn outpost.web.app:app --host 0.0.0.0 --port 8080` |
 | Tests | _none yet_ |
 | Verify models resident | `ollama ps` (on the box) |
 

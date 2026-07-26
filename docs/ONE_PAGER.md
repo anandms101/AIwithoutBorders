@@ -1,10 +1,11 @@
-# FieldSignal — One-Pager
+# Outpost — One-Pager
 
 *Always-on clinical triage and outbreak surveillance for disconnected field hospitals —
 running entirely on the Dell Pro Max with GB10.*
 
-> Working name. Pick something a procurement officer can say out loud without explaining
-> the joke. See `DECISIONS.md` Q3.
+> Name locked — see `DECISIONS.md` D10. A field hospital *is* an outpost: forward-deployed,
+> disconnected, self-sufficient. Say it in the deck as *"a clinical outpost that never
+> sleeps."*
 
 ---
 
@@ -28,7 +29,7 @@ A clinician works normally — dictates a consultation in their own language, up
 X-ray from the portable unit, writes a note. Everything lands in a watched folder on the
 box.
 
-FieldSignal runs continuously, unprompted, and:
+Outpost runs continuously, unprompted, and:
 
 | Step | What happens |
 | --- | --- |

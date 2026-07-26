@@ -12,8 +12,8 @@ question here means someone is guessing.
 | --- | --- | --- | --- | --- |
 | Q1 | **Demo language — French or Arabic?** | Drives ASR testing; must be tested with real recorded audio by 13:00 | ML-A | ⬜ Open |
 | Q2 | **Final Nemotron variant and actual resident size after quantization** | Determines whether all 4 models fit under the ≤70GB budget | Infra | ⬜ Open |
-| Q3 | **Product name** (FieldSignal is a placeholder) | Appears in UI, repo, deck, video | Presenter | ⬜ Open |
-| Q4 | **Where does the mock egress receiver live** — a teammate's laptop on the venue network, or a second local port? (Laptop is more convincing on camera.) | Sets the allowlist entry and `FIELDSIGNAL_EGRESS_URL` | Infra | ⬜ Open |
+| Q3 | ~~**Product name**~~ | — | Presenter | ✅ **Resolved → D10** |
+| Q4 | **Where does the mock egress receiver live** — a teammate's laptop on the venue network, or a second local port? (Laptop is more convincing on camera.) | Sets the allowlist entry and `OUTPOST_EGRESS_URL` | Infra | ⬜ Open |
 | Q5 | **Who reads the pitch?** Decide now; that person should not be debugging at 17:00. | Rehearsal time | All | ⬜ Open |
 
 ---
@@ -34,6 +34,7 @@ timebox.
 | D7 | **One allowlisted egress host**, counts only, <1KB | Privacy is structural; it is also the demo's most memorable number |
 | D8 | **Trace panel is protected scope** | Visible reasoning is 30% of the score; terminal output is the acceptable fallback |
 | D9 | **Record the video before the deadline pressure**, ~17:15 | It's the artifact that survives if the live demo dies |
+| D10 | **Product name is Outpost** (resolves Q3) | A field hospital *is* an outpost — forward-deployed, disconnected, self-sufficient. Survives being heard once over bad venue AV, no medical overclaim, and no collision with a well-known dev tool. Rejected: *Signal*, *Ember*, *Nightwatch* (collide with Signal, Ember.js, Nightwatch.js); *Sentinel* (Microsoft/Redis Sentinel); *AI Without Borders* as the product name (MSF-adjacent, and we cite MSF as a source — implies affiliation we don't have) |
 
 ---
 

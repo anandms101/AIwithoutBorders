@@ -1,4 +1,4 @@
-# FieldSignal — Demo Runbook
+# Outpost — Demo Runbook
 
 Five minutes on stage, one 3-minute recorded video. One spine, one irreducible piece of
 theatre. Demo + pitch is 30% of the score.

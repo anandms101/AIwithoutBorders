@@ -1,4 +1,4 @@
-# FieldSignal — Architecture & Contracts
+# Outpost — Architecture & Contracts
 
 Working contract derived from `PRD.md` §4–§7. **Amend this file when the implementation
 diverges** — this is the reference every worker and the agent code against. Nothing here
@@ -13,7 +13,7 @@ overrides the invariants in `../AGENTS.md`.
 ├── AGENTS.md                  # standing context for every agent/human
 ├── .github/copilot-instructions.md
 ├── docs/                      # this folder — one-pager, PRD, plan, runbook, decisions
-├── fieldsignal/
+├── outpost/
 │   ├── config.py              # all config, read from env, single source
 │   ├── db.py                  # SQLite connections, migrations, schema DDL
 │   ├── watcher.py             # F-01 inotify watcher on /data/inbox
@@ -38,7 +38,7 @@ overrides the invariants in `../AGENTS.md`.
 │   ├── reset_demo.sh              # idempotent reset, must complete in < 60s
 │   └── verify_egress_block.sh     # prove default-deny on camera
 ├── mock_receiver/             # the single allowlisted endpoint (runs off-box)
-└── data/                      # gitignored: inbox/, artifacts/, fieldsignal.db
+└── data/                      # gitignored: inbox/, artifacts/, outpost.db
 ```
 
 ## 2. Filesystem contract
@@ -47,7 +47,7 @@ overrides the invariants in `../AGENTS.md`.
 | --- | --- |
 | `/data/inbox/` | Watched folder. Clinicians drop `.wav/.m4a`, `.png/.jpg`, `.txt` here. |
 | `/data/artifacts/<case_id>/` | Persisted per-case outputs: source copy, transcripts, findings JSON. |
-| `/data/fieldsignal.db` | SQLite — jobs, graph, vectors, trace, alerts. On disk, always. |
+| `/data/outpost.db` | SQLite — jobs, graph, vectors, trace, alerts. On disk, always. |
 
 Files are grouped into a **case** by filename stem: `case-0421.wav`, `case-0421.png`,
 `case-0421.txt` all belong to case `case-0421`. Dedupe on **SHA-256 content hash** — a file
@@ -201,7 +201,7 @@ deterministic fallback. Never let unparseable prose reach the database.
 Exactly one allowlisted host. Payload is counts only, under 1KB:
 
 ```json
-{"syndrome":"acute_watery_diarrhoea","catchment":"sector-4","count":11,"window_hours":72,"trend":"rising","site_id":"FS-001"}
+{"syndrome":"acute_watery_diarrhoea","catchment":"sector-4","count":11,"window_hours":72,"trend":"rising","site_id":"OP-001"}
 ```
 
 Rules:
@@ -216,9 +216,9 @@ Rules:
 
 | Process | Command (target) | Notes |
 | --- | --- | --- |
-| Watcher + workers | `python -m fieldsignal.watcher` | Long-running; picks up jobs |
-| Agent heartbeat | `python -m fieldsignal.agent.heartbeat` | Every 30s; < 10s per idle cycle |
-| Web UI | `uvicorn fieldsignal.web.app:app --host 0.0.0.0 --port 8080` | Foreground; must not block on the heartbeat |
+| Watcher + workers | `python -m outpost.watcher` | Long-running; picks up jobs |
+| Agent heartbeat | `python -m outpost.agent.heartbeat` | Every 30s; < 10s per idle cycle |
+| Web UI | `uvicorn outpost.web.app:app --host 0.0.0.0 --port 8080` | Foreground; must not block on the heartbeat |
 | Mock receiver | `python -m mock_receiver` (off-box) | The single allowlisted endpoint |
 
 Heartbeat and UI must run **simultaneously** and be shown doing so (`PRD.md` §7
@@ -229,14 +229,14 @@ concurrency).
 All config in `config.py`, read from environment with sane defaults. Required:
 
 ```
-FIELDSIGNAL_DB=/data/fieldsignal.db
-FIELDSIGNAL_INBOX=/data/inbox
-FIELDSIGNAL_ARTIFACTS=/data/artifacts
-FIELDSIGNAL_SITE_ID=FS-001
-FIELDSIGNAL_HEARTBEAT_SECONDS=30
-FIELDSIGNAL_ALERT_MIN_CASES=3
-FIELDSIGNAL_ALERT_WINDOW_HOURS=72
-FIELDSIGNAL_EGRESS_URL=http://<mock-receiver>:9000/report   # the ONLY allowlisted host
+OUTPOST_DB=/data/outpost.db
+OUTPOST_INBOX=/data/inbox
+OUTPOST_ARTIFACTS=/data/artifacts
+OUTPOST_SITE_ID=OP-001
+OUTPOST_HEARTBEAT_SECONDS=30
+OUTPOST_ALERT_MIN_CASES=3
+OUTPOST_ALERT_WINDOW_HOURS=72
+OUTPOST_EGRESS_URL=http://<mock-receiver>:9000/report   # the ONLY allowlisted host
 OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_KEEP_ALIVE=-1
 OLLAMA_MAX_LOADED_MODELS=4

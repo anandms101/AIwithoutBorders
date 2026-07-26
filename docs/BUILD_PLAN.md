@@ -1,4 +1,4 @@
-# FieldSignal — Build Plan
+# Outpost — Build Plan
 
 Working copy of `PRD.md` §9. **Re-read the non-goals list at every gate.**
 Timebox: demo video + submission by **18:30**, pitch deck by **19:00**, code freeze at
