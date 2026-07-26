@@ -322,6 +322,12 @@ class TestAlertRaising:
     def test_new_alert_after_previous_is_decided(
         self, db: sqlite3.Connection, test_settings: Settings
     ) -> None:
+        """A decided alert must NOT re-fire while nothing has changed.
+
+        Approving does not make the cases disappear, so without suppression the
+        same cluster re-alerts 30s after a human actioned it. That is alert
+        fatigue, and it is how a surveillance system stops being read.
+        """
         for index in range(3):
             add_case(db, f"c{index}", hours_ago=index + 1)
         alerting.evaluate(
@@ -332,7 +338,48 @@ class TestAlertRaising:
         raised = alerting.evaluate(
             now=ANCHOR.isoformat(), use_agent=False, connection=db, config=test_settings
         )
-        assert len(raised) == 1
+        assert raised == [], "no new cases means no new alert"
+        assert db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0] == 1
+
+    def test_alert_refires_when_the_cluster_grows(
+        self, db: sqlite3.Connection, test_settings: Settings
+    ) -> None:
+        """A genuinely new case must produce a new alert."""
+        for index in range(3):
+            add_case(db, f"c{index}", hours_ago=index + 1)
+        alerting.evaluate(
+            now=ANCHOR.isoformat(), use_agent=False, connection=db, config=test_settings
+        )
+        db.execute("UPDATE alerts SET status = 'approved'")
+
+        add_case(db, "c-new", hours_ago=0.5)
+        raised = alerting.evaluate(
+            now=ANCHOR.isoformat(), use_agent=False, connection=db, config=test_settings
+        )
+
+        assert len(raised) == 1, "new evidence must reach the reviewer"
+        row = db.execute(
+            "SELECT case_ids_json FROM alerts WHERE id = ?", (raised[0],)
+        ).fetchone()
+        assert "c-new" in row["case_ids_json"]
+
+    def test_approved_alert_does_not_immediately_repeat(
+        self, db: sqlite3.Connection, test_settings: Settings
+    ) -> None:
+        """Several heartbeats after approval must stay quiet."""
+        for index in range(3):
+            add_case(db, f"c{index}", hours_ago=index + 1)
+        alerting.evaluate(
+            now=ANCHOR.isoformat(), use_agent=False, connection=db, config=test_settings
+        )
+        db.execute("UPDATE alerts SET status = 'approved'")
+
+        for _ in range(5):
+            assert alerting.evaluate(
+                now=ANCHOR.isoformat(), use_agent=False,
+                connection=db, config=test_settings,
+            ) == []
+        assert db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0] == 1
 
     def test_pending_alerts_parses_case_ids(
         self, db: sqlite3.Connection, test_settings: Settings

@@ -172,23 +172,49 @@ def has_open_alert(
     syndrome_code: str,
     catchment: str,
     *,
+    case_ids: list[str] | None = None,
     connection: sqlite3.Connection | None = None,
     config: Settings | None = None,
 ) -> bool:
-    """True when a pending alert already covers this group.
+    """True when this group has already been alerted on and nothing is new.
 
-    Without this the 30s heartbeat would raise a duplicate alert every cycle
-    and bury the reviewer.
+    Two distinct suppressions, both necessary:
+
+    * A **pending** alert blocks re-raising, or the 30s heartbeat would post a
+      duplicate every cycle and bury the reviewer.
+    * A **decided** alert blocks re-raising too, unless the cluster has grown.
+      Approving an alert does not make the cases disappear, so without this the
+      same cluster re-alerts 30 seconds after it was actioned. Alert fatigue is
+      the classic way a surveillance system stops being read, and re-raising an
+      alert a human just dealt with is exactly how it starts.
+
+    Passing ``case_ids`` enables the growth check: a genuinely new case in the
+    same group produces a new alert, which is the behaviour that matters.
     """
     owned = connection is None
     conn = connection or connect(config or settings)
     try:
-        row = conn.execute(
-            "SELECT 1 FROM alerts WHERE syndrome_code = ? AND catchment = ?"
-            " AND status = 'pending' LIMIT 1",
+        rows = conn.execute(
+            "SELECT status, case_ids_json FROM alerts"
+            " WHERE syndrome_code = ? AND catchment = ?",
             (syndrome_code, catchment),
-        ).fetchone()
-        return row is not None
+        ).fetchall()
+        if not rows:
+            return False
+
+        if any(row["status"] == "pending" for row in rows):
+            return True
+
+        if case_ids is None:
+            return True
+
+        # Already-reviewed cases across every decided alert for this group.
+        reviewed: set[str] = set()
+        for row in rows:
+            reviewed.update(json.loads(row["case_ids_json"]))
+
+        # Suppress only while there is nothing the reviewer has not already seen.
+        return set(case_ids).issubset(reviewed)
     finally:
         if owned:
             conn.close()
@@ -247,7 +273,11 @@ def evaluate(
         raised: list[str] = []
         for cluster in find_clusters(now=now, connection=conn, config=config):
             if has_open_alert(
-                cluster.syndrome_code, cluster.catchment, connection=conn, config=config
+                cluster.syndrome_code,
+                cluster.catchment,
+                case_ids=cluster.case_ids,
+                connection=conn,
+                config=config,
             ):
                 continue
 
