@@ -59,7 +59,7 @@ demo_cases/*.txt ──► data/inbox/ ──watchdog──► jobs (SQLite)
 | F-11 | Side-by-side transcripts (P1) | ✅ | `/case/<id>` shows native + English + film findings |
 | F-12 | Returning-patient resolution (P2) | ⬜ | Not started — explicitly a nice-to-have |
 
-**Test suite: 230 passing, plus 8 live model tests.**
+**Test suite: 235 passing, plus 8 live model tests.**
 
 ## 4. How each part works, and what it does when it breaks
 
@@ -225,6 +225,18 @@ overflow". 32768 is the working value.
 **OpenClaw reports some failures on stdout with exit code 0.** Without screening,
 "Context overflow: prompt too large" would have been stored as a clinician-facing alert
 rationale.
+
+**Lossy ASR text overwrote a good note-derived syndrome mapping.** A case can carry both a
+written note and a dictated recording. Whisper rendered *"selles liquides"* as *"liquid
+saline"*, which retrieved `acute_febrile_illness` instead of `acute_watery_diarrhoea` — and
+because the recording finished second, the worse evidence won. Three clustering cases
+silently became three unrelated ones and the alert stopped firing. The mapping now keeps
+the highest confidence rather than the most recent, and traces the discarded one.
+
+**Approved alerts re-fired every heartbeat.** Approving does not make the cases disappear,
+so the same cluster raised an identical alert 30 seconds later, and every cycle after. That
+is alert fatigue — the classic way a surveillance system stops being read. Suppression now
+covers decided alerts too, but only while no new case has appeared in the group.
 
 ## 9. Likely questions
 

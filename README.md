@@ -43,10 +43,13 @@ make drop                        # copies the demo cases into the watched inbox
 
 Then open **<http://127.0.0.1:8081/>**.
 
+> **Presenting this?** [`DEMO_GUIDE.md`](DEMO_GUIDE.md) has the exact commands, what to say
+> at each panel, how to show OpenClaw, and what to do if something breaks on stage.
+
 ```bash
 make stop                        # stop everything
 make status                      # what's running
-make test                        # 230 tests, no model calls
+make test                        # 235 tests, no model calls
 ```
 
 `make demo` preflights before it starts anything: venv present, Ollama answering, each
@@ -59,11 +62,15 @@ Within ~30 seconds of `make drop`:
 
 | Where | What |
 | --- | --- |
-| **Inbox panel** | 5 cases appear — nobody touched a keyboard |
-| **Agent trace** | `enqueue_file` → `map_presentation` → `write_case` → `query_graph` → `raise_alert`, live |
+| **Inbox panel** | 5 cases appear — nobody touched a keyboard. Each tagged `audio` / `film` / `note` |
+| **Agent trace** | `enqueue_file` → `transcribe` → `score_film` → `map_presentation` → `write_case` → `query_graph` → `raise_alert`, live |
 | **Alerts** | Exactly **one**: *3 cases matching acute watery diarrhoea, sector-4, 72h, rising* |
+| **Case detail** | French audio player, side-by-side transcript + translation, and the chest film with its score |
 | **Egress preview** | The exact payload and its size — **124 bytes** — shown *before* you approve |
-| **Byte counters** | ~230,000 bytes on box vs 124 sent once approved — a **1,859:1** ratio |
+| **Byte counters** | ~3.9 MB on box vs 124 sent once approved — a **31,000:1** ratio |
+
+Multimodal cases take ~90–120s to process (Whisper on CPU). Add `--notes-only` for a
+sub-2-second run: `./scripts/drop_demo_cases.sh --decoys --notes-only`.
 
 Two of the five cases are **decoys that must not fire**: same syndrome in a different
 catchment, and a different syndrome in the same catchment. Both are processed and mapped
