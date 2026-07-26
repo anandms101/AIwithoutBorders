@@ -53,13 +53,13 @@ demo_cases/*.txt ──► data/inbox/ ──watchdog──► jobs (SQLite)
 | F-05 | Case written to graph | ✅ | 3 nodes + 2 edges + 1 `cases` row, idempotent |
 | F-06 | Heartbeat every 30s | ✅ | Idle cycle **<1s** against a 10s budget |
 | F-07 | Alert with linked case ids + rationale | ✅ | Live: 1 alert from 3 cases, 2 decoys excluded |
-| F-08 | UI live trace panel | ⬜ | `trace` table populated; UI not yet built |
-| F-09 | Approve / Dismiss | ⚠️ | Logic + tests done; UI not yet built |
-| F-10 | Aggregate egress, byte count shown | ⚠️ | **124 bytes** verified; UI counter pending |
-| F-11 | Side-by-side transcripts (P1) | ⬜ | Data captured, UI not built |
+| F-08 | UI live trace panel | ✅ | Auto-refreshing panel, newest first, errors highlighted |
+| F-09 | Approve / Dismiss | ✅ | Approve transmits + records bytes; dismiss transmits nothing |
+| F-10 | Aggregate egress, byte count shown | ✅ | **124 bytes**, previewed before approval; counters live |
+| F-11 | Side-by-side transcripts (P1) | ✅ | `/case/<id>` shows native + English + film findings |
 | F-12 | Returning-patient resolution (P2) | ⬜ | Not started — explicitly a nice-to-have |
 
-**Test suite: 200 passing, plus 8 live model tests.**
+**Test suite: 230 passing, plus 8 live model tests.**
 
 ## 4. How each part works, and what it does when it breaks
 
@@ -258,9 +258,27 @@ SPA framework, Neo4j. All named as non-goals in `AGENTS.md`; the discipline is t
 
 ## 11. Still open
 
-- **F-08/F-09 UI** — the trace panel is 30% of the score and is the next build.
 - **Q4** — where the mock receiver lives. Defaulting to `127.0.0.1:9000`; one env var.
 - **Q5** — who reads the pitch.
+- **F-12** — returning-patient resolution across name variants. Explicitly P2.
 - **Chest X-ray datasets** — TBX11K / COVID-19 Radiography cleared in `DATASETS.md` but not
   downloaded. Vision is verified against synthetic images; real films are a swap, not a change.
+- **Consultation audio** — D13 calls for self-recorded French. ASR is verified against
+  MediaSpeech FR instead, which is the designated baseline; recording is a drop-in.
 - **ASR on GPU** — currently CPU at ~18s/utterance. Inside budget, but improvable.
+
+## 12. How to run it
+
+```bash
+make setup && make demo      # preflight, reset, start all four services
+make drop                    # the unscripted moment
+```
+
+Dashboard on <http://127.0.0.1:8081/>, receiver on <http://127.0.0.1:9000/reports>.
+`make stop` tears everything down. Full instructions in the README.
+
+Orchestration is a supervisor script rather than Docker (D17): Ollama holds the models on
+the host GPU, so containerising Outpost would need host networking plus GPU passthrough —
+more failure modes on demo day, not fewer. `run_demo.sh` preflights the venv, Ollama, each
+required model, OpenClaw and both ports before starting anything, so a missing model
+surfaces as a specific message rather than a half-started system.

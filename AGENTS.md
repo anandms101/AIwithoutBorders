@@ -27,29 +27,41 @@ variables are prefixed `OUTPOST_`.
 > exists. Update it in the same commit as the work it describes.
 
 - **Docs:** complete. One-pager, PRD, architecture contracts, build plan, demo runbook and
-  decision log are all in `docs/`.
-- **Code:** **none yet.** No `outpost/` package, no `scripts/`, no `mock_receiver/`.
-  The layout in `docs/ARCHITECTURE.md` §1 is the *target*, not the current tree.
-- **Box:** not provisioned in this repo's context. NemoClaw onboarding, model loading and
-  the egress allowlist are Infra tasks tracked in `docs/BUILD_PLAN.md`.
-- **Blocking:** open questions Q2, Q4, Q5 in `docs/DECISIONS.md` are unresolved. Q2
-  (Nemotron variant) gates real work — flag it rather than guessing. Q1 (demo language) is
-  resolved: **French** (D11). Q3 (product name) is resolved: **Outpost** (D10).
-- **Data:** datasets are chosen, licence-cleared and documented in `docs/DATASETS.md`.
-  **Nothing is downloaded yet** and no fetch tooling exists.
+  decision log are all in `docs/`. **`docs/ARC.md` records what is actually built** — read
+  it before assuming anything about the implementation.
+- **Code:** **P0 spine complete and verified end-to-end.** `outpost/` package, `scripts/`,
+  `mock_receiver/` and `tests/` all exist. F-01 through F-11 are implemented; F-12
+  (returning-patient resolution, P2) is not started. 230 tests pass plus 8 live model tests.
+- **Box:** provisioned. Ollama healthy with `medgemma`, `embeddinggemma:300m` and
+  `gemma4:12b`. OpenClaw 2026.7.1-2 installed on the host and configured against local
+  Ollama. Whisper large-v3 weights cached.
+- **Blocking:** Q2 resolved by substitution (see D15). **Q4 and Q5 remain open.** Q4
+  defaults to `127.0.0.1:9000` and is one env var to change.
+- **Data:** case definitions, synthetic background graph and demo cases are all generated
+  by scripts. Chest X-ray datasets are cleared in `docs/DATASETS.md` but **not downloaded**
+  — vision is verified against synthetic images; real films are a swap, not a change.
 
 ## Commands
 
-No build, test or lint tooling exists yet. **Do not invent commands** — if you add
-tooling, record the verified command here.
+Verified working. `make help` lists everything.
 
 | Task | Command |
 | --- | --- |
-| Watcher + workers | _not yet implemented_ — target: `python -m outpost.watcher` |
-| Agent heartbeat | _not yet implemented_ — target: `python -m outpost.agent.heartbeat` |
-| Web UI | _not yet implemented_ — target: `uvicorn outpost.web.app:app --host 0.0.0.0 --port 8080` |
-| Tests | _none yet_ |
-| Verify models resident | `ollama ps` (on the box) |
+| First-time setup | `make setup` |
+| ASR weights (needs internet) | `make setup-asr` |
+| Configure OpenClaw | `make openclaw` |
+| **Run everything** | `make demo` |
+| Drop the demo cases | `make drop` |
+| Stop / status | `make stop` / `make status` |
+| Tests (no model calls) | `make test` |
+| Tests incl. live models | `make verify` |
+| Watcher only | `.venv/bin/python -m outpost.watcher` |
+| Heartbeat only | `.venv/bin/python -m outpost.agent.heartbeat` |
+| Web UI only | `.venv/bin/python -m uvicorn outpost.web.app:app --port 8081` |
+| Mock receiver | `.venv/bin/python -m mock_receiver` |
+| Verify models resident | `ollama ps` (`UNTIL` must read `Forever`) |
+
+**The UI defaults to port 8081**: 8080 is already bound by the OpenShell gateway on this box.
 
 ## Canonical documents
 

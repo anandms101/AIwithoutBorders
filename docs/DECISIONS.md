@@ -11,7 +11,7 @@ question here means someone is guessing.
 | # | Question | Why it blocks | Owner | Status |
 | --- | --- | --- | --- | --- |
 | Q1 | ~~**Demo language — French or Arabic?**~~ | — | ML-A | ✅ **Resolved → D11 (French)** |
-| Q2 | **Final Nemotron variant and actual resident size after quantization** | Determines whether all 4 models fit under the ≤70GB budget | Infra | ⬜ Open |
+| Q2 | ~~**Final Nemotron variant and actual resident size after quantization**~~ | — | Infra | ✅ **Resolved → D15** (`gemma4:12b`; Nemotron not on the box) |
 | Q3 | ~~**Product name**~~ | — | Presenter | ✅ **Resolved → D10** |
 | Q4 | **Where does the mock egress receiver live** — a teammate's laptop on the venue network, or a second local port? (Laptop is more convincing on camera.) | Sets the allowlist entry and `OUTPOST_EGRESS_URL` | Infra | ⬜ Open |
 | Q5 | **Who reads the pitch?** Decide now; that person should not be debugging at 17:00. | Rehearsal time | All | ⬜ Open |
@@ -39,6 +39,10 @@ timebox.
 | D12 | **Image datasets are TBX11K + COVID-19 Radiography Database**, both CC BY 4.0 | CC BY 4.0 is the only licence in the survey that cleanly permits a *publicly posted* video for a *commercially pitched* product. TBX11K adds bounding boxes (something to point at on stage) and 4-level severity labels (the only clean-licensed way to sanity-check a 0–100 score). MIMIC-CXR, VinDr-CXR, PadChest, CheXpert and RSNA are all disqualified — see `DATASETS.md` §6 |
 | D13 | **Consultation audio is self-recorded**, not sourced | No public clinical consultation audio exists in French or Arabic — the gap is absolute. Self-recording is therefore both necessary and the cleanest licence position. `PriMock57` supplies the consultation structure as a script template only |
 | D14 | **WHO case definitions are paraphrased into our own schema**, with the WHO adaptation disclaimer | WHO material is CC BY-NC-SA 3.0 IGO and the NC clause is a genuine risk given the pitch names paying customers. Paraphrasing clinical criteria (facts/standards) into our own fields, plus the exact required disclaimer and no WHO logo, is the defensible position. ICD-11 is CC BY-ND (no adaptation of codes) and SNOMED CT needs an affiliate licence, so we use internal codes with a documented mapping. See `DATASETS.md` §4 |
+| D15 | **Agent reasoning is `gemma4:12b`, not Nemotron 3 Super** (resolves Q2) | Nemotron is not on the box and nothing was downloaded; the venue cannot fetch it. `gemma4:12b` is the only model verified end-to-end through OpenClaw. Footprint with all models resident is ~13.6GB of the ≤70GB budget, so co-residency — the actual pitch — is preserved with room to spare. If Nemotron arrives on the drive it is a one-line config change (`OUTPOST_AGENT_MODEL`) |
+| D16 | **Agent narration is asynchronous, not inline** | Measured OpenClaw turn time on this box ranged 20s–165s. Inline that blows the 30s heartbeat and, worse, makes cycle time unpredictable. The alert is written immediately with a deterministic rationale and the wording is upgraded in place once OpenClaw replies. Severity, case ids, counts and trend are decided by arithmetic *before* the model is consulted, so invariant 5 holds whether narration runs or not. Adds `alerts.rationale_source`; `ARCHITECTURE.md` §3 amended |
+| D17 | **Orchestration is a supervisor script, not Docker** | Ollama holds the models resident on the host GPU. Containerising Outpost would need host networking plus GPU passthrough to reach it — more failure modes on demo day, no fewer. `scripts/run_demo.sh` delivers what Docker was wanted for (one command, ordered startup, health checks, clean teardown) with nothing new to debug at 17:00 |
+| D18 | **UI listens on port 8081** | 8080 is already bound by the OpenShell gateway on this box |
 
 ---
 

@@ -20,6 +20,82 @@ Hackathon build for Dell x NVIDIA Local AI.
 
 ---
 
+## Quickstart
+
+Requires Python 3.12+, [`uv`](https://docs.astral.sh/uv/), and a running
+[Ollama](https://ollama.com). Everything else is local.
+
+```bash
+# 1. Install
+make setup                       # venv + runtime and dev dependencies
+
+# 2. Pull the models (once, needs internet — the venue has none)
+ollama pull medgemma
+ollama pull embeddinggemma:300m
+ollama pull gemma4:12b
+
+# 3. Run everything
+make demo                        # preflight, reset state, start all four services
+
+# 4. In another terminal — the unscripted moment
+make drop                        # copies the demo cases into the watched inbox
+```
+
+Then open **<http://127.0.0.1:8081/>**.
+
+```bash
+make stop                        # stop everything
+make status                      # what's running
+make test                        # 230 tests, no model calls
+```
+
+`make demo` preflights before it starts anything: venv present, Ollama answering, each
+required model pulled, and both ports free. It fails with a specific message rather than
+starting half a system.
+
+### What you should see
+
+Within ~30 seconds of `make drop`:
+
+| Where | What |
+| --- | --- |
+| **Inbox panel** | 5 cases appear — nobody touched a keyboard |
+| **Agent trace** | `enqueue_file` → `map_presentation` → `write_case` → `query_graph` → `raise_alert`, live |
+| **Alerts** | Exactly **one**: *3 cases matching acute watery diarrhoea, sector-4, 72h, rising* |
+| **Egress preview** | The exact payload and its size — **124 bytes** — shown *before* you approve |
+| **Byte counters** | ~230,000 bytes on box vs 124 sent once approved — a **1,859:1** ratio |
+
+Two of the five cases are **decoys that must not fire**: same syndrome in a different
+catchment, and a different syndrome in the same catchment. Both are processed and mapped
+correctly, and neither contributes to the alert. That is the evidence the threshold is
+real rather than a hardcoded trigger.
+
+Press **Approve** and the aggregate lands at
+<http://127.0.0.1:9000/reports>. Press **Dismiss** and nothing is transmitted at all.
+
+### Optional
+
+```bash
+make setup-asr    # faster-whisper + Whisper large-v3 weights (~3GB, needs internet)
+make openclaw     # point OpenClaw at local Ollama (agent narration)
+make keepalive    # pin models resident via systemd (needs sudo)
+```
+
+Without these the system still runs: alerts use a deterministic rationale instead of an
+agent-written one, and audio cases fail loudly rather than silently.
+
+### Configuration
+
+Everything is environment-driven — see [`.env.example`](.env.example). The two you are
+most likely to change:
+
+```bash
+OUTPOST_WEB_PORT=8081                            # 8080 collides with the OpenShell gateway
+OUTPOST_EGRESS_URL=http://<laptop>:9000/report   # the single allowlisted host
+```
+
+---
+
 ## Documentation
 
 Start with **[`AGENTS.md`](AGENTS.md)** — the standing context for every contributor and
@@ -27,6 +103,7 @@ every AI agent working in this repo.
 
 | Doc | Contents |
 | --- | --- |
+| [`docs/ARC.md`](docs/ARC.md) | **What is actually built** — status per requirement, how each part degrades, measured numbers, divergences, invariant enforcement, prepared Q&A |
 | [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) | The pitch: problem, product, why it can't run in the cloud, who pays, safety posture, rubric alignment, sources |
 | [`docs/PRD.md`](docs/PRD.md) | Technical execution PRD: goals/non-goals, user stories, architecture, functional requirements, NFRs, demo data, schedule, risks |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Repo layout, SQLite schema, agent tool signatures, model-boundary schemas, egress contract, config |
@@ -42,22 +119,31 @@ are the working copies — edit those, not the PDF.
 ## Architecture at a glance
 
 ```
-/data/inbox/ ──watcher──▶ jobs (SQLite) ──▶ pipeline workers
+data/inbox/ ──watcher──▶ jobs (SQLite) ──▶ pipeline workers
                                 │
         ┌───────────────────────┼────────────────┬────────────────┐
         ▼                       ▼                ▼                ▼
   ASR/translate          vision scorer     case-def RAG     graph writer
         └───────────────────────┴────────────────┴────────────────┘
                                 │
-                      heartbeat loop (agent)
+                  artifacts — free text lives here, and stops here
+                                │
+                  only STRUCTURED fields cross into the graph
+                                │
+                      heartbeat loop (every 30s)
                                 │
               tools: query_graph, get_case_def,
                      score_film, raise_alert
                                 │
-               alert ──▶ UI review ──▶ approve
+               alert ──▶ UI review ──▶ human approve
                                 │
-              egress (allowlisted, counts only)
+              egress (one allowlisted host, counts only, 124 bytes)
 ```
+
+The separation in the middle is the important part. Cluster detection reads a denormalised
+`cases` table that has **no column capable of holding narrative text**, so a hallucinated
+clause is structurally incapable of manufacturing an outbreak — not merely discouraged
+from it.
 
 ## Stack
 
@@ -66,16 +152,26 @@ All inference is local. There are no remote LLM or API calls in the agent's runt
 | Layer | Choice |
 | --- | --- |
 | Hardware | Dell Pro Max with GB10 — Grace Blackwell, 128GB unified memory, DGX OS |
-| Sandbox / harness | NemoClaw / OpenShell, OpenClaw agent harness — default-deny egress, sandboxed writes |
-| ASR + translation | Whisper large-v3 |
-| Medical vision | MedGemma 4B via Ollama |
-| Case-definition RAG | Local embedding model + SQLite vector table |
-| Agent reasoning | Nemotron 3 Super (quantized / smaller variant) |
-| Storage | SQLite on disk — jobs, graph, vectors, trace, alerts |
-| UI | FastAPI + server-rendered HTML |
+| Agent harness | **OpenClaw**, driven locally against Ollama |
+| ASR + translation | Whisper large-v3 via CTranslate2 (`faster-whisper`) |
+| Medical vision | `medgemma` via Ollama |
+| Case-definition RAG | `embeddinggemma:300m` + SQLite vector table |
+| Agent reasoning | `gemma4:12b` — see note below |
+| Storage | SQLite on disk (WAL) — jobs, graph, vectors, trace, alerts |
+| UI | FastAPI + server-rendered Jinja, no SPA, no build step |
 
-Four models stay resident simultaneously (`OLLAMA_KEEP_ALIVE=-1`), total ≤70GB, leaving
-≥20% headroom so the background heartbeat and foreground clinician work don't contend.
+> **Substitution:** the PRD specifies Nemotron 3 Super for agent reasoning. It is not
+> available on this box, so `gemma4:12b` is used — the only model verified end-to-end
+> through OpenClaw. This and three other divergences are documented with the measurements
+> that forced them in [`docs/ARC.md`](docs/ARC.md) §6.
+
+Models stay resident (`keep_alive=-1` on every request). Current footprint is ~13.6GB of a
+≤70GB budget, leaving ample headroom so the background heartbeat and foreground clinician
+work don't contend.
+
+**Context length, not parameter count, drives residency.** `ollama ps` showed
+`phi4-mini:3.8b` holding 20GB purely from a 131k default context. `num_ctx` is pinned per
+role; without that, co-residency fails for a reason unrelated to model size.
 
 ## Attribution
 
