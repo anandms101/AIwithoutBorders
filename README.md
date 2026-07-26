@@ -30,6 +30,7 @@ every AI agent working in this repo.
 | [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) | The pitch: problem, product, why it can't run in the cloud, who pays, safety posture, rubric alignment, sources |
 | [`docs/PRD.md`](docs/PRD.md) | Technical execution PRD: goals/non-goals, user stories, architecture, functional requirements, NFRs, demo data, schedule, risks |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Repo layout, SQLite schema, agent tool signatures, model-boundary schemas, egress contract, config |
+| [`docs/DATASETS.md`](docs/DATASETS.md) | Dataset selection and why, exact licence clauses, rejected alternatives, USB manifest, attribution strings |
 | [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | Timeboxed milestones, gates, cut lines, workstream ownership, risk register |
 | [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md) | 5-minute demo script, choreography, pre-flight checklist, Q&A prep, failure handling |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Open questions, decision log, third-party clearance tracking |
@@ -78,10 +79,16 @@ Four models stay resident simultaneously (`OLLAMA_KEEP_ALIVE=-1`), total ≤70GB
 
 ## Attribution
 
-Chest X-ray imagery comes from public de-identified research sets (NIH ChestX-ray14,
-VinDr-CXR). Syndromic case definitions are paraphrased from WHO EWARN/EWARS materials.
-Consultation audio and all synthetic case data are self-authored. See
-[`docs/DECISIONS.md`](docs/DECISIONS.md) §Third-party content for clearance status.
+Chest X-ray imagery comes from **TBX11K** (Nankai University) and the **COVID-19
+Radiography Database** (Qatar University), both CC BY 4.0, with **NIH ChestX-ray14** for
+testing volume. Syndromic case definitions are paraphrased into our own schema from the WHO
+2023 EWAR operational guide (WHO/UXH/EPR/2023.1, CC BY-NC-SA 3.0 IGO) and carry WHO's
+required adaptation disclaimer — this project is not created, endorsed or reviewed by WHO.
+Consultation audio is self-recorded in French; all synthetic case data is self-authored.
+
+Full licence analysis, the rejected alternatives and copy-ready citation strings are in
+[`docs/DATASETS.md`](docs/DATASETS.md); clearance status is tracked in
+[`docs/DECISIONS.md`](docs/DECISIONS.md) §Third-party content.
 
 ## Licence
 

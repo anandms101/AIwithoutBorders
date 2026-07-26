@@ -32,9 +32,11 @@ variables are prefixed `OUTPOST_`.
   The layout in `docs/ARCHITECTURE.md` §1 is the *target*, not the current tree.
 - **Box:** not provisioned in this repo's context. NemoClaw onboarding, model loading and
   the egress allowlist are Infra tasks tracked in `docs/BUILD_PLAN.md`.
-- **Blocking:** open questions Q1, Q2, Q4, Q5 in `docs/DECISIONS.md` are unresolved. Q1
-  (demo language) and Q2 (Nemotron variant) gate real work — flag them rather than
-  guessing. Q3 (product name) is resolved: **Outpost**.
+- **Blocking:** open questions Q2, Q4, Q5 in `docs/DECISIONS.md` are unresolved. Q2
+  (Nemotron variant) gates real work — flag it rather than guessing. Q1 (demo language) is
+  resolved: **French** (D11). Q3 (product name) is resolved: **Outpost** (D10).
+- **Data:** datasets are chosen, licence-cleared and documented in `docs/DATASETS.md`.
+  **Nothing is downloaded yet** and no fetch tooling exists.
 
 ## Commands
 
@@ -56,6 +58,7 @@ tooling, record the verified command here.
 | `docs/ONE_PAGER.md` | The pitch: problem, product, why-local, who pays, safety posture | Before any narrative, README, or demo work |
 | `docs/PRD.md` | Technical execution PRD: goals, non-goals, architecture, F-IDs, NFRs | Before any code change |
 | `docs/ARCHITECTURE.md` | Component contracts, data model, tool signatures, payload shapes | Before touching a component boundary |
+| `docs/DATASETS.md` | Dataset selection, exact licence clauses, rejected alternatives, USB manifest, attribution | Before touching demo data, the case-definition table, or anything that appears in the video |
 | `docs/BUILD_PLAN.md` | Timeboxed schedule, gates, cut lines, workstream ownership | At every gate; when deciding what to drop |
 | `docs/DEMO_RUNBOOK.md` | 5-minute demo script, choreography, fallbacks, Q&A prep | Before changing anything on the demo path |
 | `docs/DECISIONS.md` | Open questions + decision log | When an open question blocks you; record the answer here |
@@ -154,6 +157,11 @@ When writing any user-facing string, alert text, or README copy:
 
 ## Attribution / clearance
 
-All third-party content must be cleared and cited in the writeup: X-ray datasets (NIH
-ChestX-ray14, VinDr-CXR), model weights, and WHO case definitions (paraphrased into our
-own schema). Track these in `docs/DECISIONS.md` §Third-party content.
+All third-party content must be cleared and cited in the writeup: X-ray datasets (TBX11K,
+COVID-19 Radiography Database, NIH ChestX-ray14), speech corpora, model weights, and WHO
+case definitions (paraphrased into our own schema, with WHO's required adaptation
+disclaimer). Full licence analysis is in `docs/DATASETS.md`; clearance status is tracked in
+`docs/DECISIONS.md` §Third-party content.
+
+**Before anything goes on camera**, check `docs/DATASETS.md` §7. Some assets are
+non-commercial and must never appear in the recorded video.

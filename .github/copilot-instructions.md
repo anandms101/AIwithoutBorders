@@ -11,7 +11,8 @@ NVIDIA Local AI). No patient data leaves the box.
 ## Detail lives in `docs/`
 
 `ONE_PAGER.md` (pitch, rubric) · `PRD.md` (goals, non-goals, F-01…F-12, NFRs) ·
-`ARCHITECTURE.md` (schema, tool signatures, egress contract) · `BUILD_PLAN.md` (gates,
+`ARCHITECTURE.md` (schema, tool signatures, egress contract) · `DATASETS.md` (datasets,
+licences, what may appear on camera) · `BUILD_PLAN.md` (gates,
 cut lines) · `DEMO_RUNBOOK.md` (demo script, Q&A) · `DECISIONS.md` (open questions).
 
 These are **not** auto-loaded — open the relevant one before acting. `AGENTS.md` says

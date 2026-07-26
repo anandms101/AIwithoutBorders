@@ -10,7 +10,7 @@ question here means someone is guessing.
 
 | # | Question | Why it blocks | Owner | Status |
 | --- | --- | --- | --- | --- |
-| Q1 | **Demo language — French or Arabic?** | Drives ASR testing; must be tested with real recorded audio by 13:00 | ML-A | ⬜ Open |
+| Q1 | ~~**Demo language — French or Arabic?**~~ | — | ML-A | ✅ **Resolved → D11 (French)** |
 | Q2 | **Final Nemotron variant and actual resident size after quantization** | Determines whether all 4 models fit under the ≤70GB budget | Infra | ⬜ Open |
 | Q3 | ~~**Product name**~~ | — | Presenter | ✅ **Resolved → D10** |
 | Q4 | **Where does the mock egress receiver live** — a teammate's laptop on the venue network, or a second local port? (Laptop is more convincing on camera.) | Sets the allowlist entry and `OUTPOST_EGRESS_URL` | Infra | ⬜ Open |
@@ -35,21 +35,32 @@ timebox.
 | D8 | **Trace panel is protected scope** | Visible reasoning is 30% of the score; terminal output is the acceptable fallback |
 | D9 | **Record the video before the deadline pressure**, ~17:15 | It's the artifact that survives if the live demo dies |
 | D10 | **Product name is Outpost** (resolves Q3) | A field hospital *is* an outpost — forward-deployed, disconnected, self-sufficient. Survives being heard once over bad venue AV, no medical overclaim, and no collision with a well-known dev tool. Rejected: *Signal*, *Ember*, *Nightwatch* (collide with Signal, Ember.js, Nightwatch.js); *Sentinel* (Microsoft/Redis Sentinel); *AI Without Borders* as the product name (MSF-adjacent, and we cite MSF as a source — implies affiliation we don't have) |
+| D11 | **Demo language is French** (resolves Q1) | Whisper large-v3 is ~5–6% WER on French vs 37.8% on Levantine and 84.7% on Maghrebi Arabic. The commonly quoted ~9.3% "Arabic" figure averages MSA read-speech benchmarks that do not represent a field clinician, who speaks a dialect. Translation quality is also nearly double (CoVoST-2 →EN BLEU 38.1 vs 21.4). At one word in three wrong, a live Arabic transcript is a demo failure. French also avoids RTL bidi work in the UI. Evidence in `DATASETS.md` §3.1 |
+| D12 | **Image datasets are TBX11K + COVID-19 Radiography Database**, both CC BY 4.0 | CC BY 4.0 is the only licence in the survey that cleanly permits a *publicly posted* video for a *commercially pitched* product. TBX11K adds bounding boxes (something to point at on stage) and 4-level severity labels (the only clean-licensed way to sanity-check a 0–100 score). MIMIC-CXR, VinDr-CXR, PadChest, CheXpert and RSNA are all disqualified — see `DATASETS.md` §6 |
+| D13 | **Consultation audio is self-recorded**, not sourced | No public clinical consultation audio exists in French or Arabic — the gap is absolute. Self-recording is therefore both necessary and the cleanest licence position. `PriMock57` supplies the consultation structure as a script template only |
+| D14 | **WHO case definitions are paraphrased into our own schema**, with the WHO adaptation disclaimer | WHO material is CC BY-NC-SA 3.0 IGO and the NC clause is a genuine risk given the pitch names paying customers. Paraphrasing clinical criteria (facts/standards) into our own fields, plus the exact required disclaimer and no WHO logo, is the defensible position. ICD-11 is CC BY-ND (no adaptation of codes) and SNOMED CT needs an affiliate licence, so we use internal codes with a documented mapping. See `DATASETS.md` §4 |
 
 ---
 
 ## Third-party content — clearance and citation
 
-Everything below must be cleared and declared in the writeup (Rule 06).
+Everything below must be cleared and declared in the writeup (Rule 06). Full licence
+analysis, exact clauses and rejected alternatives are in [`DATASETS.md`](DATASETS.md).
 
 | Asset | Source | Clearance | Cited where |
 | --- | --- | --- | --- |
-| Chest X-rays | NIH ChestX-ray14 / VinDr-CXR, public de-identified. **Load from drive.** | ⬜ To confirm | Writeup + README |
-| Consultation audio | Self-recorded by the team in French or Arabic | ✅ Self-authored | — |
+| Chest X-rays (demo) | TBX11K (Nankai Univ.) + COVID-19 Radiography Database (Qatar Univ.) | ✅ **CC BY 4.0** — commercial + public video OK | Writeup + README + `DATASETS.md` §9 |
+| Chest X-rays (testing) | NIH ChestX-ray14, Kaggle sample | ✅ **"No restrictions"** + required attribution | Writeup + `DATASETS.md` §9 |
+| Chest X-rays — rejected | MIMIC-CXR, VinDr-CXR, PadChest, CheXpert, RSNA | ⛔ Credentialing / DICOM / size / NC — see `DATASETS.md` §6 | — |
+| Consultation audio | **Self-recorded in French** (D11, D13) | ✅ Self-authored — no public clinical audio exists in FR/AR | — |
+| ASR validation corpora | MediaSpeech FR; African Accented French (OpenSLR 57) | ✅ **CC BY 4.0** / **Apache 2.0** | Writeup + `DATASETS.md` §9 |
+| Translation scoring | CoVoST 2 fr→en | ⚠️ **CC BY-NC** — offline validation only, never on camera | — |
+| Note-style reference | Indiana Open-i; PriMock57 | ⚠️ **NC / research licence** — structure only, never on camera | — |
 | Background graph | Synthetic, scripted | ✅ Self-authored | — |
 | Cluster cases | Synthetic, designed to trip the threshold | ✅ Self-authored | — |
-| WHO syndromic case definitions | Paraphrased into our own schema | ⬜ Cite source | `case_definitions.source_note` + deck |
-| Model weights (Whisper large-v3, MedGemma 4B, Nemotron, embeddings) | Vendor licences | ⬜ To confirm | Writeup stack declaration |
+| WHO syndromic case definitions | WHO/UXH/EPR/2023.1, paraphrased into our own schema (D14) | ⚠️ **CC BY-NC-SA 3.0 IGO** — requires the adaptation disclaimer, no WHO logo, no implied endorsement | `case_definitions.source_note` + deck + `DATASETS.md` §4.2 |
+| WHO TB CAD recommendation | WHO consolidated TB guidelines, Module 2, 2021, Rec. 14 | ✅ Cite for the "thresholds calibrated per setting" claim | Deck + `DATASETS.md` §4.4 |
+| Model weights (Whisper large-v3, MedGemma 4B, Nemotron, embeddings) | Vendor licences | ⬜ **To confirm** — see `DATASETS.md` §10 item 3 | Writeup stack declaration |
 
 ---
 

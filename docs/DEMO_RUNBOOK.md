@@ -46,8 +46,9 @@ deskside power. Then:
   arrivals against real noise.
 - **Recorded fallback cued on the second monitor.** If the box hiccups: *"I'll show you the
   recording"* — and keep talking.
-- **Demo language: French or Arabic.** Core MSF operating languages, well-supported by the
-  ASR. Do not pick something exotic and produce garbage on stage.
+- **Demo language: French** (D11). A core MSF operating language and Tier-1 for Whisper at
+  ~5–6% WER. Arabic was rejected: field clinicians speak dialect, not MSA, and Whisper hits
+  37.8% WER on Levantine and 84.7% on Maghrebi — roughly one word in three wrong on stage.
 - **Put the box on the table**, not behind the podium.
 - The person reading the pitch should not be debugging at 17:00.
 

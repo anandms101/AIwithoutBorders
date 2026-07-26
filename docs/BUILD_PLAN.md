@@ -111,7 +111,7 @@ video submission.
 | --- | --- | --- | --- |
 | Models not on drive; venue Wi-Fi can't download them | **Fatal** | Verify drive contents *before* anything else | Infra |
 | Model swapping kills heartbeat continuity | High | `KEEP_ALIVE=-1`, verify `ollama ps` under load | Infra |
-| ASR output is garbage in chosen language | High | French or Arabic only; test real audio by 13:00 | ML-A |
+| ASR output is garbage in chosen language | High | **French** (D11); Arabic dialects hit 37.8–84.7% WER. Test real audio by 13:00 | ML-A |
 | Scope creep back to five features | High | Non-goals list is binding; re-read at every gate | All |
 | Vision model produces prose, not a score | Medium | Strict JSON schema prompt; parse, validate, fixed-score fallback | ML-B |
 | Trace panel eats the whole afternoon | Medium | 30% of the score — protect it. Terminal output is acceptable | Frontend |

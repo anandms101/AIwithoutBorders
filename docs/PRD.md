@@ -226,8 +226,8 @@ No names, no ages, no free text, no identifiers. Display `bytes_sent` in the UI 
 
 | Asset | Source | Rule 06 note |
 | --- | --- | --- |
-| Chest X-rays | Public de-identified set (NIH ChestX-ray14, VinDr-CXR). **Load from drive.** | Must be cleared for use and declared in the writeup |
-| Consultation audio | **Record yourselves** in French or Arabic | Self-authored, no clearance issue |
+| Chest X-rays | **TBX11K** + **COVID-19 Radiography Database** (both CC BY 4.0); NIH ChestX-ray14 for test volume. **Load from drive.** | Cleared — see `DATASETS.md`. VinDr-CXR/MIMIC-CXR were rejected (DICOM / credentialing) |
+| Consultation audio | **Record yourselves in French** (D11) | Self-authored, no clearance issue |
 | Background graph | Synthetic — 2 weeks of ordinary consultations, scripted | Self-authored |
 | Cluster cases | Synthetic — 3 cases designed to trip the threshold | Self-authored |
 | Case definitions | WHO syndromic definitions, paraphrased into your own schema | Cite source |
@@ -270,7 +270,7 @@ If 3 builders: Infra absorbs Frontend, and ML-A takes case-definition mapping.
 | --- | --- | --- |
 | Models not on drive; venue Wi-Fi can't download them | **Fatal** | Verify drive contents *before* touching anything else |
 | Model swapping kills heartbeat continuity | High | `KEEP_ALIVE=-1`, verify with `ollama ps` under load |
-| ASR output is garbage in chosen language | High | Demo in French or Arabic. Test with real recorded audio by 13:00, not 17:00 |
+| ASR output is garbage in chosen language | High | Demo in **French** (D11 — Arabic dialects hit 37.8–84.7% WER). Test with real recorded audio by 13:00, not 17:00 |
 | Vision model produces prose, not a score | Medium | Constrain output with a strict JSON schema prompt; parse and validate; fall back to a fixed score if unparseable |
 | Trace panel eats the whole afternoon | Medium | It's 30% of the score — protect it. Terminal output is an acceptable fallback |
 | Live demo dies on stage | Medium | Recorded video cued on second monitor. Practice the handoff line |
@@ -282,7 +282,8 @@ If 3 builders: Infra absorbs Frontend, and ML-A takes case-definition mapping.
 
 Tracked in `DECISIONS.md`.
 
-1. Demo language — French or Arabic? (Drives ASR testing.)
+1. ~~Demo language — French or Arabic?~~ **Resolved: French** (D11 — Whisper is ~5–6% WER on
+   French vs 37.8–84.7% on Arabic dialects).
 2. Final Nemotron variant and actual resident size after quantization.
 3. ~~Product name.~~ **Resolved: Outpost.**
 4. Where does the mock egress receiver live — a teammate's laptop on the venue network, or
