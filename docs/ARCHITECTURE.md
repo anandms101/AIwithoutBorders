@@ -145,6 +145,8 @@ CREATE TABLE alerts (
   window_hours   INTEGER NOT NULL,
   trend          TEXT,
   rationale_text TEXT NOT NULL,
+  rationale_source TEXT NOT NULL DEFAULT 'template'
+                 CHECK (rationale_source IN ('template','agent')),
   status         TEXT NOT NULL DEFAULT 'pending'
                  CHECK (status IN ('pending','approved','dismissed')),
   bytes_sent     INTEGER,
@@ -152,6 +154,14 @@ CREATE TABLE alerts (
   decided_at     TEXT
 );
 ```
+
+**Amendment — `rationale_source`.** Agent narration is asynchronous. Measured OpenClaw
+turn time on this box ranged from 20s to 165s, which would blow the F-06 heartbeat budget
+and make cycle time unpredictable. So an alert is created immediately with a deterministic
+template rationale (`rationale_source='template'`) and the wording is upgraded in place
+once OpenClaw replies (`'agent'`). Only the prose changes: severity, case ids, counts,
+trend and the egress payload are all decided by arithmetic before the model is consulted,
+so **invariant 5 holds whether or not narration ever runs**.
 
 **Invariant:** `alerting.py` may query `cases` and `case_definitions` only. It must never
 read `artifacts.english_text`, `artifacts.native_transcript`, or `artifacts.film_findings`.

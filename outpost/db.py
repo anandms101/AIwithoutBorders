@@ -112,6 +112,12 @@ CREATE TABLE IF NOT EXISTS alerts (
   window_hours   INTEGER NOT NULL,
   trend          TEXT,
   rationale_text TEXT NOT NULL,
+  -- Divergence from ARCHITECTURE §3, recorded there too: the agent narration
+  -- is asynchronous, so an alert is created with a deterministic rationale and
+  -- upgraded in place once OpenClaw replies. This column says which you are
+  -- looking at.
+  rationale_source TEXT NOT NULL DEFAULT 'template'
+                 CHECK (rationale_source IN ('template','agent')),
   status         TEXT NOT NULL DEFAULT 'pending'
                  CHECK (status IN ('pending','approved','dismissed')),
   bytes_sent     INTEGER,
