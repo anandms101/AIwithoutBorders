@@ -1,0 +1,1 @@
+"""Outpost web UI package."""

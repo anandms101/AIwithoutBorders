@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="counters">
+  <div class="counter"><div class="v">{{ counters.jobs_queued }}</div><div class="k">Queued</div></div>
+  <div class="counter good"><div class="v">{{ counters.jobs_done }}</div><div class="k">Processed</div></div>
+  {% if counters.jobs_failed %}
+  <div class="counter warn"><div class="v">{{ counters.jobs_failed }}</div><div class="k">Failed</div></div>
+  {% endif %}
+  <div class="counter"><div class="v">{{ counters.cases }}</div><div class="k">Cases</div></div>
+  <div class="counter warn"><div class="v">{{ counters.alerts_pending }}</div><div class="k">Alerts</div></div>
+  <div class="counter"><div class="v">{{ '{:,}'.format(counters.bytes_on_box) }}</div><div class="k">Bytes on box</div></div>
+  <div class="counter good"><div class="v">{{ counters.bytes_sent }}</div><div class="k">Bytes sent</div></div>
+  {% if counters.ratio %}
+  <div class="counter good"><div class="v">{{ '{:,}'.format(counters.ratio) }}:1</div><div class="k">Kept : sent</div></div>
+  {% endif %}
+</div>
+
+<div class="grid">
+
+  <!-- F-09 alert review -->
+  <div class="panel">
+    <h2>Alerts awaiting review</h2>
+    <div class="body">
+      {% if not alerts %}
+        <div class="empty">No alerts. Thresholds are calibrated per setting.</div>
+      {% endif %}
+      {% for alert in alerts %}
+      <div class="alert {{ alert.severity }}">
+        <h3>
+          {{ alert.count if alert.count else alert.case_ids|length }} cases matching
+          {{ alert.syndrome_code.replace('_', ' ') }}
+        </h3>
+        <div class="meta">
+          <span class="pill {{ alert.severity }}">{{ alert.severity }}</span>
+          {{ alert.catchment }} &middot; {{ alert.window_hours }}h window &middot;
+          trend {{ alert.trend or 'stable' }} &middot;
+          <span class="pill {{ alert.rationale_source }}">{{ alert.rationale_source }}</span>
+        </div>
+        <p>{{ alert.rationale_text }}</p>
+        <div class="meta mono">{{ alert.case_ids|join(', ') }}</div>
+
+        <div class="note">
+          Approving transmits counts only, to a single allowlisted host.
+          <span id="preview-{{ alert.id }}"></span>
+        </div>
+
+        <div class="actions">
+          <form method="post" action="/alerts/{{ alert.id }}/approve">
+            <button class="approve" type="submit">Approve &amp; transmit</button>
+          </form>
+          <form method="post" action="/alerts/{{ alert.id }}/dismiss">
+            <button class="dismiss" type="submit">Dismiss</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if decided %}
+      <table>
+        <tr><th>Decided</th><th>Syndrome</th><th>Status</th><th>Bytes</th></tr>
+        {% for alert in decided %}
+        <tr>
+          <td class="mono">{{ alert.decided_at }}</td>
+          <td>{{ alert.syndrome_code.replace('_', ' ') }}</td>
+          <td><span class="pill {{ 'done' if alert.status == 'approved' else 'failed' }}">{{ alert.status }}</span></td>
+          <td class="mono">{{ alert.bytes_sent or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- F-08 trace panel: 30% of the score, so it refreshes on its own -->
+  <div class="panel">
+    <h2>Agent trace &mdash; live</h2>
+    <div class="body">
+      <table id="trace">
+        <tr><th>Time</th><th>Actor</th><th>Tool</th><th>Result</th><th>ms</th></tr>
+        {% for row in traces %}
+        <tr class="trace-row">
+          <td class="mono">{{ row.ts[11:19] }}</td>
+          <td class="mono">{{ row.actor }}</td>
+          <td class="mono">{{ row.tool }}</td>
+          <td class="mono {{ 'trace-err' if row.result_summary and 'ERROR' in row.result_summary }}">
+            {{ (row.result_summary or '')[:70] }}
+          </td>
+          <td class="mono">{{ row.duration_ms if row.duration_ms is not none else '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if not traces %}<div class="empty">No tool calls yet.</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Inbox -->
+  <div class="panel">
+    <h2>Inbox</h2>
+    <div class="body">
+      <table>
+        <tr><th>Case</th><th>Kind</th><th>Status</th><th>Error</th></tr>
+        {% for job in jobs %}
+        <tr>
+          <td><a href="/case/{{ job.case_id }}">{{ job.case_id }}</a></td>
+          <td class="mono">{{ job.kind }}</td>
+          <td><span class="pill {{ job.status }}">{{ job.status }}</span></td>
+          <td class="mono trace-err">{{ (job.error or '')[:40] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if not jobs %}<div class="empty">Inbox empty. Drop files into the watched folder.</div>{% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Poll rather than websocket: fewer moving parts, and the trace panel must not
+// be the thing that breaks at 16:00.
+async function refreshTrace() {
+  try {
+    const [traceRes, statusRes] = await Promise.all([
+      fetch('/api/trace?limit=40'), fetch('/api/status')
+    ]);
+    const {trace} = await traceRes.json();
+    const status = await statusRes.json();
+
+    const table = document.getElementById('trace');
+    if (table && trace.length) {
+      const header = table.rows[0].outerHTML;
+      table.innerHTML = header + trace.map(r => {
+        const err = (r.result_summary || '').includes('ERROR');
+        return `<tr class="trace-row">
+          <td class="mono">${(r.ts || '').slice(11, 19)}</td>
+          <td class="mono">${r.actor}</td>
+          <td class="mono">${r.tool}</td>
+          <td class="mono ${err ? 'trace-err' : ''}">${(r.result_summary || '').slice(0, 70)}</td>
+          <td class="mono">${r.duration_ms ?? ''}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // A new alert should not require the operator to notice and reload.
+    if (status.alerts_pending !== {{ counters.alerts_pending }}) location.reload();
+  } catch (e) { /* the panel degrades to static; it never throws on screen */ }
+}
+setInterval(refreshTrace, 2000);
+
+// Show exactly what would leave the box, before anyone approves it.
+{% for alert in alerts %}
+fetch('/api/egress-preview/{{ alert.id }}').then(r => r.json()).then(d => {
+  const el = document.getElementById('preview-{{ alert.id }}');
+  if (el && d.payload) {
+    el.innerHTML = `<strong>${d.bytes} bytes</strong> of ${d.limit} &rarr; ${d.destination}` +
+      `<pre class="payload">${JSON.stringify(d.payload)}</pre>`;
+  }
+}).catch(() => {});
+{% endfor %}
+</script>
+
+{% endblock %}

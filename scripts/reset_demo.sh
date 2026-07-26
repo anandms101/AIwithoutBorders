@@ -40,9 +40,8 @@ if [ "$ELAPSED" -ge 60 ]; then
 fi
 
 echo ""
-echo "    Next:"
-echo "      1. $PY -m outpost.watcher            # terminal 1"
-echo "      2. $PY -m outpost.agent.heartbeat    # terminal 2"
-echo "      3. $PY -m mock_receiver              # terminal 3 (off-box)"
-echo "      4. uvicorn outpost.web.app:app --port 8080   # terminal 4"
-echo "      5. ./scripts/drop_demo_cases.sh      # the unscripted moment"
+echo "    State is ready. To start everything:"
+echo "      ./scripts/run_demo.sh --no-reset     (or: make demo-keep)"
+echo ""
+echo "    Then drop the cases:"
+echo "      ./scripts/drop_demo_cases.sh --decoys"
