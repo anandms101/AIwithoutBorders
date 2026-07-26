@@ -90,6 +90,18 @@ class Settings:
     request_timeout_seconds: int
     asr_language: str
 
+    @property
+    def catchment_manifest(self) -> Path:
+        """Maps ``case_id`` -> catchment.
+
+        The catchment must not be inferred from the consultation note. The note
+        is what the model reads, and nothing the model reads may decide which
+        catchment a case counts towards — that would let generated text steer
+        cluster detection (invariant 5). In a real deployment this comes from
+        the registration desk; here it is a TSV.
+        """
+        return self.data_root / "catchments.tsv"
+
     allowed_extensions: dict[str, str] = field(
         default_factory=lambda: {
             ".wav": "audio",

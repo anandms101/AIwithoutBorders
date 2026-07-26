@@ -154,12 +154,28 @@ def process_jobs(
 def _catchment_for(
     conn: sqlite3.Connection, case_id: str, config: Settings
 ) -> str:
-    """Catchment recorded by the worker, else the site default."""
+    """Resolve a case's catchment.
+
+    Order: whatever a worker recorded, then the registration manifest, then the
+    site default. Deliberately never parsed from the consultation note —
+    generated text must not be able to steer which catchment a case counts
+    towards (invariant 5).
+    """
     row = conn.execute(
         "SELECT catchment FROM artifacts WHERE case_id = ?", (case_id,)
     ).fetchone()
     if row and row["catchment"]:
         return str(row["catchment"])
+
+    manifest = config.catchment_manifest
+    if manifest.is_file():
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            if not line.strip() or "\t" not in line:
+                continue
+            key, _, value = line.partition("\t")
+            if key.strip() == case_id:
+                return value.strip()
+
     return config.site_id
 
 
