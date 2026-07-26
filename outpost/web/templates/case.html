@@ -19,22 +19,29 @@
 
   <!-- F-11: audio, native transcript and English side by side -->
   <div class="panel">
-    <h2>Consultation</h2>
+    <h2>Consultation &mdash; recorded in French, translated locally</h2>
     <div class="body">
+      {% if artifact and artifact.audio_path %}
+      <div style="padding:12px 14px">
+        <audio controls preload="none" style="width:100%"
+               src="/media/{{ case_id }}/audio"></audio>
+      </div>
+      {% endif %}
       {% if artifact and (artifact.native_transcript or artifact.english_text) %}
       <table>
         <tr>
-          <th>Native ({{ artifact.source_language or '—' }})</th>
-          <th>English</th>
+          <th style="width:50%">Native ({{ artifact.source_language or '—' }})</th>
+          <th style="width:50%">English</th>
         </tr>
         <tr>
           <td>{{ artifact.native_transcript or '—' }}</td>
           <td>{{ artifact.english_text or '—' }}</td>
         </tr>
       </table>
-      {% if artifact.audio_path %}
-      <div class="note mono">audio: {{ artifact.audio_path }}</div>
-      {% endif %}
+      <div class="note">
+        Transcribed and translated by Whisper large-v3 on this box. The audio
+        and both transcripts never leave it.
+      </div>
       {% else %}
       <div class="empty">No transcript for this case.</div>
       {% endif %}
@@ -44,14 +51,20 @@
   <div class="panel">
     <h2>Imaging</h2>
     <div class="body">
+      {% if artifact and artifact.image_path %}
+      <div style="padding:12px 14px; text-align:center; background:#000">
+        <img src="/media/{{ case_id }}/film" alt="chest radiograph"
+             style="max-width:100%; max-height:340px; border-radius:4px">
+      </div>
+      {% endif %}
       {% if artifact and artifact.film_score is not none %}
       <table>
         <tr><th>Abnormality score</th><td class="mono">{{ artifact.film_score }} / 100</td></tr>
         <tr><th>Findings</th><td>{{ artifact.film_findings or '—' }}</td></tr>
-        <tr><th>Source</th><td class="mono">{{ artifact.image_path or '—' }}</td></tr>
       </table>
       <div class="note">
         A review-priority signal for a clinician, not a diagnosis.
+        Scored by MedGemma on this box.
       </div>
       {% else %}
       <div class="empty">No film for this case.</div>

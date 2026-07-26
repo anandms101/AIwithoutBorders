@@ -96,20 +96,27 @@
 
   <!-- Inbox -->
   <div class="panel">
-    <h2>Inbox</h2>
+    <h2>Inbox &mdash; grouped into cases</h2>
     <div class="body">
       <table>
-        <tr><th>Case</th><th>Kind</th><th>Status</th><th>Error</th></tr>
-        {% for job in jobs %}
+        <tr><th>Case</th><th>Inputs</th><th>Syndrome</th><th>Status</th></tr>
+        {% for case in case_rows %}
         <tr>
-          <td><a href="/case/{{ job.case_id }}">{{ job.case_id }}</a></td>
-          <td class="mono">{{ job.kind }}</td>
-          <td><span class="pill {{ job.status }}">{{ job.status }}</span></td>
-          <td class="mono trace-err">{{ (job.error or '')[:40] }}</td>
+          <td><a href="/case/{{ case.case_id }}">{{ case.case_id }}</a></td>
+          <td class="mono">
+            {% if case.has_audio %}<span class="pill done" title="French consultation">audio</span>{% endif %}
+            {% if case.has_image %}<span class="pill done" title="chest radiograph">film</span>{% endif %}
+            {% if case.has_note %}<span class="pill queued" title="written note">note</span>{% endif %}
+          </td>
+          <td class="mono">{{ (case.syndrome_code or '—').replace('_', ' ') }}</td>
+          <td>
+            <span class="pill {{ case.status }}">{{ case.status }}</span>
+            {% if case.error %}<span class="trace-err mono">{{ case.error[:28] }}</span>{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </table>
-      {% if not jobs %}<div class="empty">Inbox empty. Drop files into the watched folder.</div>{% endif %}
+      {% if not case_rows %}<div class="empty">Inbox empty. Drop files into the watched folder.</div>{% endif %}
     </div>
   </div>
 

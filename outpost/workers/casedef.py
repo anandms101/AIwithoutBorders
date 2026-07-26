@@ -227,6 +227,39 @@ def process(
         )
         started = time.perf_counter()
         match = map_presentation(text, client=client, connection=conn, config=config)
+
+        # Keep the strongest mapping, never the most recent one. A case can
+        # carry both a written note and a dictated recording; the recording goes
+        # through ASR and translation, so its text is lossier and can retrieve a
+        # weaker or plainly wrong syndrome. Overwriting unconditionally would let
+        # the worse evidence win purely because it was processed second, and a
+        # wrong syndrome code feeds straight into cluster detection.
+        existing = conn.execute(
+            "SELECT syndrome_code, syndrome_conf FROM artifacts WHERE case_id = ?",
+            (case_id,),
+        ).fetchone()
+        previous_conf = (
+            float(existing["syndrome_conf"])
+            if existing is not None and existing["syndrome_conf"] is not None
+            else -1.0
+        )
+
+        superseded = match.confidence <= previous_conf and previous_conf >= 0.0
+        if superseded:
+            trace.update(
+                trace_id,
+                result_summary=(
+                    f"kept={existing['syndrome_code']} ({previous_conf:.3f}) "
+                    f"over={match.code} ({match.confidence:.3f}) method={match.method}"
+                ),
+                duration_ms=int((time.perf_counter() - started) * 1000),
+                connection=conn,
+                config=config,
+            )
+            return SyndromeMatch(
+                str(existing["syndrome_code"]), previous_conf, method="retained"
+            )
+
         duration_ms = int((time.perf_counter() - started) * 1000)
 
         conn.execute(

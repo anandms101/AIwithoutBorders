@@ -189,6 +189,91 @@ def test_process_persists_and_traces(
     assert "acute_watery_diarrhoea" in traced[0]["result_summary"]
 
 
+class TestStrongestMappingWins:
+    """A case can carry both a note and a dictated recording.
+
+    ASR text is lossier, so it must not overwrite a better note-derived
+    mapping purely by being processed second. Found live: Whisper rendered
+    "selles liquides" as "liquid salts", which retrieved acute_febrile_illness
+    over acute_watery_diarrhoea and silently broke cluster detection.
+    """
+
+    def _seed(self, db: sqlite3.Connection, test_settings: Settings) -> FakeEmbedClient:
+        client = FakeEmbedClient(
+            {
+                "Acute watery diarrhoea": [1.0, 0.0, 0.0],
+                "Acute febrile illness": [0.0, 1.0, 0.0],
+                "watery stools": [1.0, 0.0, 0.0],
+                "liquid salts": [0.55, 0.83, 0.0],
+            }
+        )
+        for code, title in (
+            ("acute_watery_diarrhoea", "Acute watery diarrhoea"),
+            ("acute_febrile_illness", "Acute febrile illness"),
+        ):
+            casedef.upsert_definition(
+                code, title, "definition text", DISCLAIMER,
+                client=client, connection=db, config=test_settings,
+            )
+        return client
+
+    def test_weaker_later_mapping_does_not_overwrite(
+        self, db: sqlite3.Connection, test_settings: Settings
+    ) -> None:
+        client = self._seed(db, test_settings)
+
+        first = casedef.process(
+            "case-1", "watery stools", client=client, connection=db, config=test_settings
+        )
+        second = casedef.process(
+            "case-1", "liquid salts", client=client, connection=db, config=test_settings
+        )
+
+        assert first.code == "acute_watery_diarrhoea"
+        assert second.code == "acute_watery_diarrhoea", "weaker mapping must not win"
+        assert second.method == "retained"
+
+        row = db.execute(
+            "SELECT syndrome_code FROM artifacts WHERE case_id = 'case-1'"
+        ).fetchone()
+        assert row["syndrome_code"] == "acute_watery_diarrhoea"
+
+    def test_stronger_later_mapping_does_overwrite(
+        self, db: sqlite3.Connection, test_settings: Settings
+    ) -> None:
+        client = self._seed(db, test_settings)
+
+        casedef.process(
+            "case-2", "liquid salts", client=client, connection=db, config=test_settings
+        )
+        second = casedef.process(
+            "case-2", "watery stools", client=client, connection=db, config=test_settings
+        )
+
+        assert second.code == "acute_watery_diarrhoea"
+        assert second.method == "embedding"
+
+    def test_retention_is_traced(
+        self, db: sqlite3.Connection, test_settings: Settings
+    ) -> None:
+        """The panel must show why the second mapping was discarded."""
+        client = self._seed(db, test_settings)
+        casedef.process(
+            "case-3", "watery stools", client=client, connection=db, config=test_settings
+        )
+        casedef.process(
+            "case-3", "liquid salts", client=client, connection=db, config=test_settings
+        )
+
+        summaries = [
+            row["result_summary"]
+            for row in db.execute(
+                "SELECT result_summary FROM trace WHERE actor = 'worker:casedef'"
+            ).fetchall()
+        ]
+        assert any(s and s.startswith("kept=") for s in summaries)
+
+
 class TestCaseDefinitionData:
     """D14 clearance requirements are testable, so test them."""
 

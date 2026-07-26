@@ -18,7 +18,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.templating import Jinja2Templates
 
 from outpost import egress, trace
@@ -59,6 +64,24 @@ def dashboard(request: Request) -> HTMLResponse:
                 "SELECT * FROM jobs ORDER BY id DESC LIMIT 25"
             ).fetchall()
         ]
+        # One row per case, showing which modalities arrived. This is what makes
+        # "audio + film + note became one case" visible at a glance.
+        case_rows = [
+            dict(row)
+            for row in conn.execute(
+                "SELECT j.case_id,"
+                " MAX(j.kind = 'audio') AS has_audio,"
+                " MAX(j.kind = 'image') AS has_image,"
+                " MAX(j.kind = 'note')  AS has_note,"
+                " CASE WHEN SUM(j.status = 'failed') > 0 THEN 'failed'"
+                "      WHEN SUM(j.status IN ('queued','running')) > 0 THEN 'running'"
+                "      ELSE 'done' END AS status,"
+                " MAX(j.error) AS error,"
+                " (SELECT a.syndrome_code FROM artifacts a"
+                "   WHERE a.case_id = j.case_id) AS syndrome_code"
+                " FROM jobs j GROUP BY j.case_id ORDER BY MIN(j.id) DESC LIMIT 15"
+            ).fetchall()
+        ]
         alerts = alerting.pending_alerts(connection=conn, config=settings)
         decided = [
             {**dict(row), "case_ids": json.loads(row["case_ids_json"])}
@@ -75,6 +98,7 @@ def dashboard(request: Request) -> HTMLResponse:
         {
             "counters": _counters(),
             "jobs": jobs,
+            "case_rows": case_rows,
             "alerts": alerts,
             "decided": decided,
             "traces": traces,
@@ -153,3 +177,42 @@ def api_egress_preview(alert_id: str) -> JSONResponse:
             "destination": settings.egress_url,
         }
     )
+
+
+def _media_path(case_id: str, column: str) -> Path | None:
+    """Resolve a stored media path, refusing anything outside the data root."""
+    with connect(settings) as conn:
+        row = conn.execute(
+            f"SELECT {column} FROM artifacts WHERE case_id = ?", (case_id,)
+        ).fetchone()
+    if row is None or not row[column]:
+        return None
+
+    path = Path(str(row[column])).resolve()
+    # Only ever serve from inside the data root. The column is written by our
+    # own workers, but a path-traversal hole in a medical UI is not a thing to
+    # leave open on the assumption that it stays that way.
+    root = settings.data_root.resolve()
+    if not path.is_file() or root not in path.parents:
+        return None
+    return path
+
+
+@app.get("/media/{case_id}/film", response_model=None)
+def media_film(case_id: str) -> FileResponse | JSONResponse:
+    """Serve the stored radiograph so the imaging panel shows the actual film."""
+    path = _media_path(case_id, "image_path")
+    if path is None:
+        return JSONResponse({"error": "no film"}, status_code=404)
+    suffix = path.suffix.lower()
+    media_type = "image/png" if suffix == ".png" else "image/jpeg"
+    return FileResponse(path, media_type=media_type)
+
+
+@app.get("/media/{case_id}/audio", response_model=None)
+def media_audio(case_id: str) -> FileResponse | JSONResponse:
+    """Serve the consultation recording so it can be played in the browser."""
+    path = _media_path(case_id, "audio_path")
+    if path is None:
+        return JSONResponse({"error": "no audio"}, status_code=404)
+    return FileResponse(path, media_type="audio/wav")

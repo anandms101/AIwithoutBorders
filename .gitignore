@@ -31,3 +31,7 @@ models/
 .vscode/
 demo_cases/
 .run/
+
+# Demo media (regenerate with scripts/make_demo_media.py)
+demo_media/
+.voices/
