@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Data — never commit patient-shaped data, models, or the database
+data/
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+models/
+*.gguf
+*.safetensors
+*.bin
+
+# Media / demo assets
+*.wav
+*.m4a
+*.mp3
+*.mp4
+*.mov
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
