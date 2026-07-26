@@ -19,6 +19,33 @@ decision against the rubric in `docs/ONE_PAGER.md` §Rubric alignment.
 
 `FieldSignal` is a working name. See `docs/DECISIONS.md` Q3.
 
+## Current state — update this section when it changes
+
+> **Keep this honest.** It is the first thing a new session reads to avoid assuming code
+> exists. Update it in the same commit as the work it describes.
+
+- **Docs:** complete. One-pager, PRD, architecture contracts, build plan, demo runbook and
+  decision log are all in `docs/`.
+- **Code:** **none yet.** No `fieldsignal/` package, no `scripts/`, no `mock_receiver/`.
+  The layout in `docs/ARCHITECTURE.md` §1 is the *target*, not the current tree.
+- **Box:** not provisioned in this repo's context. NemoClaw onboarding, model loading and
+  the egress allowlist are Infra tasks tracked in `docs/BUILD_PLAN.md`.
+- **Blocking:** open questions Q1–Q5 in `docs/DECISIONS.md` are unresolved. Q1 (demo
+  language) and Q2 (Nemotron variant) gate real work — flag them rather than guessing.
+
+## Commands
+
+No build, test or lint tooling exists yet. **Do not invent commands** — if you add
+tooling, record the verified command here.
+
+| Task | Command |
+| --- | --- |
+| Watcher + workers | _not yet implemented_ — target: `python -m fieldsignal.watcher` |
+| Agent heartbeat | _not yet implemented_ — target: `python -m fieldsignal.agent.heartbeat` |
+| Web UI | _not yet implemented_ — target: `uvicorn fieldsignal.web.app:app --host 0.0.0.0 --port 8080` |
+| Tests | _none yet_ |
+| Verify models resident | `ollama ps` (on the box) |
+
 ## Canonical documents
 
 | Doc | What it is | When to read it |
@@ -42,7 +69,7 @@ These are architectural, not stylistic. Breaking one breaks the pitch.
    sandbox. If you are about to add an SDK that calls a hosted model, stop.
 2. **No patient data leaves the box.** The only thing that may cross the wire is an
    approved aggregate payload: counts only, no names, no ages, no free text, no
-   identifiers. See `docs/ARCHITECTURE.md` §Egress payload.
+   identifiers. See `docs/ARCHITECTURE.md` §6 Egress contract.
 3. **Human gate on every escalation path.** Nothing is transmitted without an explicit
    Approve action in the UI.
 4. **It triages and prioritises. It never diagnoses.** Every model output is a *draft for

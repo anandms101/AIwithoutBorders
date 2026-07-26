@@ -51,7 +51,7 @@ overrides the invariants in `../AGENTS.md`.
 
 Files are grouped into a **case** by filename stem: `case-0421.wav`, `case-0421.png`,
 `case-0421.txt` all belong to case `case-0421`. Dedupe on **SHA-256 content hash** — a file
-dropped twice must not create a second case (`PRD.md` §F-07 edge cases).
+dropped twice must not create a second case (`PRD.md` §F-07 detail: alert logic).
 
 ## 3. SQLite schema (single DB, WAL mode)
 
