@@ -1,0 +1,33 @@
+[project]
+name = "outpost"
+version = "0.1.0"
+description = "Always-on clinical triage and outbreak-surveillance agent for disconnected field hospitals"
+requires-python = ">=3.12"
+
+# Pinned deliberately: the venue has no usable Wi-Fi (AGENTS.md working conventions).
+dependencies = [
+    "fastapi==0.121.2",
+    "uvicorn==0.41.0",
+    "jinja2==3.1.6",
+    "python-multipart==0.0.20",
+    "httpx==0.28.1",
+    "watchdog==6.0.0",
+]
+
+[project.optional-dependencies]
+asr = ["faster-whisper==1.2.1"]
+dev = ["pytest==9.0.2", "pytest-asyncio==1.3.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["outpost"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: hits a real local model via Ollama (not mocked)",
+    "asr: requires faster-whisper weights on disk",
+]

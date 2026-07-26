@@ -1,0 +1,23 @@
+# ASR stack for F-02 (Whisper large-v3 via CTranslate2).
+# Split out because it is heavy and only the ASR worker needs it.
+#   uv pip install -r requirements-asr.txt
+#
+# NOTE: the weights are NOT vendored. Fetch them while you still have internet —
+# the venue does not. See scripts/fetch_asr_model.sh.
+
+-r requirements.txt
+
+faster-whisper==1.2.1
+ctranslate2==4.8.1
+onnxruntime==1.28.0
+tokenizers==0.23.1
+huggingface-hub==1.24.0
+hf-xet==1.5.2
+av==18.0.0
+numpy==2.5.1
+filelock==3.32.0
+flatbuffers==25.12.19
+fsspec==2026.6.0
+protobuf==7.35.1
+pyyaml==6.0.3
+tqdm==4.69.1
