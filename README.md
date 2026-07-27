@@ -131,6 +131,31 @@ are the working copies — edit those, not the PDF.
 
 *Full-resolution [SVG](docs/architecture.svg).*
 
+## Screenshots
+
+All captured from a live run on the box — nothing mocked.
+
+**Dashboard.** The pipeline strip across the top lights up as work flows through it. One
+alert is awaiting review, and the exact payload that would leave the box is shown *before*
+anyone approves it.
+
+![Outpost dashboard showing the live pipeline, drop zone, a pending cluster alert with its 124-byte egress preview, the live agent trace, and cases grouped by patient encounter](docs/public/dashboard.png)
+
+**One case, three modalities.** A dictated French consultation, its English translation, and
+the chest film — all processed locally. The film carries a review-priority score, never a
+diagnosis.
+
+![Case detail showing an audio player, the French transcript beside its English translation, and a chest radiograph with an abnormality score of 25 and findings text](docs/public/case-detail.png)
+
+**After approval.** 124 bytes left the box against 3.9 MB held locally — a ratio of
+**31,396 : 1**. The trace records the transmission.
+
+![Dashboard after approval showing bytes sent 124, kept-to-sent ratio 31,784:1, no alerts remaining, and the egress send recorded in the agent trace](docs/public/approved.png)
+
+**What actually arrived.** The receiver's log — counts only, no identifiers.
+
+![The mock receiver showing one report of 124 bytes containing only catchment, count, site id, syndrome, trend and window hours](docs/public/receiver.png)
+
 ```
 data/inbox/ ──watcher──▶ jobs (SQLite) ──▶ pipeline workers
                                 │

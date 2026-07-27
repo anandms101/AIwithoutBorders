@@ -20,7 +20,7 @@
   <!-- F-11: audio, native transcript and English side by side -->
   <div class="panel">
     <h2>Consultation &mdash; recorded in French, translated locally</h2>
-    <div class="body">
+    <div class="body auto">
       {% if artifact and artifact.audio_path %}
       <div style="padding:12px 14px">
         <audio controls preload="none" style="width:100%"
@@ -50,7 +50,7 @@
 
   <div class="panel">
     <h2>Imaging</h2>
-    <div class="body">
+    <div class="body auto">
       {% if artifact and artifact.image_path %}
       <div style="padding:12px 14px; text-align:center; background:#000">
         <img src="/media/{{ case_id }}/film" alt="chest radiograph"
@@ -74,7 +74,7 @@
 
   <div class="panel">
     <h2>Files</h2>
-    <div class="body">
+    <div class="body auto">
       <table>
         <tr><th>Kind</th><th>Status</th><th>Path</th></tr>
         {% for job in jobs %}

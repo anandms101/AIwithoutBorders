@@ -152,6 +152,9 @@ header .spacer { flex: 1; }
   background: #fbfcfd; font-weight: 700;
 }
 .panel .body { max-height: 470px; overflow-y: auto; }
+/* Case detail panels size to content: clipping the "not a diagnosis" note
+   under the film would hide the one line that must always be visible. */
+.panel .body.auto { max-height: none; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--line-soft); }

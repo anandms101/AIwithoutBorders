@@ -12,3 +12,7 @@ packaging==26.2
 
 # Re-rendering docs/architecture.png from the SVG (scripts/render_architecture.sh)
 cairosvg==2.9.0
+
+# Capturing README screenshots (scripts/capture_screenshots.py)
+# Also needs: .venv/bin/playwright install chromium
+playwright==1.61.0
