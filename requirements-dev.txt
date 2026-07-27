@@ -9,3 +9,6 @@ iniconfig==2.3.0
 pluggy==1.6.0
 pygments==2.20.0
 packaging==26.2
+
+# Re-rendering docs/architecture.png from the SVG (scripts/render_architecture.sh)
+cairosvg==2.9.0

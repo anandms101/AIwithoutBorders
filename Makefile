@@ -11,7 +11,7 @@ PY := .venv/bin/python
 UV := uv
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-asr demo drop stop status test test-live verify clean clean-all fmt
+.PHONY: help setup setup-asr demo drop stop status test test-live verify clean clean-all diagram locality fmt
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -49,6 +49,12 @@ status: ## Show what is running
 
 reset: ## Reset to clean pre-populated demo state
 	./scripts/reset_demo.sh
+
+diagram: ## Re-render docs/architecture.png from the SVG
+	./scripts/render_architecture.sh
+
+locality: ## Prove nothing leaves the box (needs services running)
+	./scripts/verify_egress_block.sh
 
 test: ## Run the test suite (no model calls)
 	$(PY) -m pytest tests/ -q -m "not live"
