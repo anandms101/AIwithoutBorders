@@ -125,6 +125,10 @@ are the working copies — edit those, not the PDF.
 
 ## Architecture at a glance
 
+[![Outpost system architecture — ingest, local AI models, SQLite graph, agent heartbeat, human gate, and the single allowlisted receiver outside the box](docs/architecture.png)](docs/architecture.svg)
+
+*Full-resolution [SVG](docs/architecture.svg).*
+
 ```
 data/inbox/ ──watcher──▶ jobs (SQLite) ──▶ pipeline workers
                                 │
