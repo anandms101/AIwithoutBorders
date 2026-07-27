@@ -64,10 +64,31 @@ workflow.
 Open the file manager at `~/Documents/AIwithoutBorders/demo_cases`, put it side by side
 with the dashboard, and **drag files straight onto the drop zone**.
 
+**What is in that folder** — not every case has every modality, which is realistic; not
+every patient gets a film:
+
+| Case | Files | Role |
+| --- | --- | --- |
+| `case-0421` | `.txt` `.wav` `.jpg` | cluster — **drag this one first, it has all three** |
+| `case-0422` | `.txt` `.wav` | cluster |
+| `case-0423` | `.txt` `.wav` | cluster |
+| `case-0424` | `.txt` | decoy — sector-9 |
+| `case-0425` | `.txt` `.wav` `.jpg` | decoy — respiratory |
+| `case-0426` | `.txt` `.wav` `.jpg` | **spare, for the live moment in §5** |
+| `case-0427` … `0430` | `.txt` | spares, other syndromes and catchments |
+
+> If you only see `.txt` files, the media was never generated. Run
+> `.venv/bin/python scripts/make_demo_media.py` — about 3 seconds with the caches warm.
+> `make demo` does this for you.
+
+Then:
+
 1. Set **Catchment** to `sector-4` on the drop zone.
-2. Drag `case-0421.txt`, `case-0421.wav` and `case-0421.jpg` **together**.
+2. Select `case-0421.txt`, `case-0421.wav` and `case-0421.jpg` and **drag them in together**.
 3. The zone confirms: *3 file(s) → 1 case(s) in sector-4*.
-4. Repeat with `case-0422.*` and `case-0423.*`.
+4. Repeat with `case-0422.*` and `case-0423.*` (two files each).
+5. Switch Catchment to `sector-9`, drag `case-0424.txt`.
+6. Switch back to `sector-4`, drag `case-0425.*`.
 
 > "Three files — a dictation, a chest film and a note — become one patient encounter,
 > because they share a name. In the field the clinician just saves them. There is no
@@ -305,6 +326,7 @@ your demo cluster.
 
 | Symptom | Do this |
 | --- | --- |
+| **Only `.txt` files in `demo_cases/`** | Media was not generated: `.venv/bin/python scripts/make_demo_media.py` (~3s). |
 | Alert not appearing | ASR is still running. `make status`, then `tail -f .run/heartbeat.log`. Wait — 11 jobs take ~2 min. |
 | Nothing in the inbox | `tail .run/watcher.log`. Restart: `make stop && make demo`. |
 | Approve returns an error | The receiver is down. `curl 127.0.0.1:9000/health`. The alert stays **pending** — nothing is lost, just approve again. |
@@ -339,18 +361,23 @@ dies, run the suite and talk through what it proves.
 
 ## 11. Regenerating demo media
 
-Already generated and cached. Only needed on a fresh clone:
+`make demo` regenerates everything automatically. You only need these directly if you are
+debugging:
 
 ```bash
 .venv/bin/python scripts/make_demo_cases.py     # notes + catchment manifest
-.venv/bin/python scripts/make_demo_media.py     # French audio + films
+.venv/bin/python scripts/make_demo_media.py     # French audio + films  (~3s cached)
 ```
 
-Audio is synthesised locally with Piper — self-authored, no clearance needed, no network.
-The radiographs are cached in `demo_media/` (gitignored: licence on that mirror is
-unstated). **Before recording the video**, swap in TBX11K or the COVID-19 Radiography
-Database from the USB drive — both CC BY 4.0 and cleared in `docs/DATASETS.md` §7 — and
-re-run `make drop`.
+**`make clean` deletes `demo_cases/` but keeps the caches** (`demo_media/`, `.voices/`), so
+regeneration stays offline and fast. Use `make clean-all` only if you want to force a
+re-download — don't do that at the venue.
+
+Audio is synthesised locally with Piper, so it is self-authored, needs no clearance, and
+needs no network. The radiographs are cached in `demo_media/` (gitignored: the licence on
+that mirror is unstated). **Before recording the video**, swap in TBX11K or the COVID-19
+Radiography Database from the USB drive — both CC BY 4.0 and cleared in
+`docs/DATASETS.md` §7 — and re-run `make demo`.
 
 ---
 

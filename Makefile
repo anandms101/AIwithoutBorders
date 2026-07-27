@@ -11,7 +11,7 @@ PY := .venv/bin/python
 UV := uv
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-asr demo drop stop status test test-live verify clean fmt
+.PHONY: help setup setup-asr demo drop stop status test test-live verify clean clean-all fmt
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -59,6 +59,10 @@ test-live: ## Run only the tests that hit real local models
 verify: ## Full suite including live model calls
 	$(PY) -m pytest tests/ -q
 
-clean: ## Remove generated state
+clean: ## Remove generated state (keeps cached media and voice model)
 	rm -rf data .run demo_cases
+	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+
+clean-all: ## Also remove cached films and the Piper voice (forces re-download)
+	rm -rf data .run demo_cases demo_media .voices
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

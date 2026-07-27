@@ -30,6 +30,15 @@ echo "==> Seeding synthetic background graph"
 echo "==> Generating demo case files"
 "$PY" scripts/make_demo_cases.py --outdir demo_cases | sed 's/^/    /'
 
+# Media too, or `make clean` leaves the demo with notes only and the audio and
+# imaging panels silently render empty. ~3s with the caches warm.
+echo "==> Preparing demo media (audio + films)"
+if ! "$PY" scripts/make_demo_media.py --outdir demo_cases 2>/dev/null \
+     | grep -vE "onnxruntime|^$" | sed 's/^/    /'; then
+  echo "    WARNING: media generation failed — notes will still work,"
+  echo "    but the transcript and imaging panels will be empty."
+fi
+
 ELAPSED=$(( $(date +%s) - START ))
 echo ""
 echo "==> Reset complete in ${ELAPSED}s"
