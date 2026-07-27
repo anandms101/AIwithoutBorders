@@ -240,9 +240,11 @@ covers decided alerts too, but only while no new case has appeared in the group.
 
 ## 9. Likely questions
 
-**"Is anything sent to the cloud?"** No. Grep test proves no non-local URLs in the runtime
-path and no hosted-LLM SDK is installed. All four models run under Ollama on the box, and
-OpenClaw is pointed at `127.0.0.1`.
+Full set, grouped by who is asking and including the ones where we are weak, is in
+[`../QNA.md`](../QNA.md). The essentials:
+
+**"Is anything sent to the cloud?"** No. `scripts/verify_egress_block.sh` proves it live in
+four checks, one of which is the receiver returning 422 for a payload carrying an identifier.
 
 **"What if the model hallucinates an outbreak?"** It structurally cannot. Alerts fire on
 `COUNT(*)` over structured fields. The model is handed already-verified numbers and asked

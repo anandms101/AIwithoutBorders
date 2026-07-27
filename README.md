@@ -110,7 +110,9 @@ every AI agent working in this repo.
 
 | Doc | Contents |
 | --- | --- |
-| [`docs/ARC.md`](docs/ARC.md) | **What is actually built** — status per requirement, how each part degrades, measured numbers, divergences, invariant enforcement, prepared Q&A |
+| [`DEMO_GUIDE.md`](DEMO_GUIDE.md) | **Running the demo** — exact commands, what to show on each panel, what to say, what to do if it breaks |
+| [`QNA.md`](QNA.md) | **Questions to expect** — grouped by who is asking, including where we are weak |
+| [`docs/ARC.md`](docs/ARC.md) | **What is actually built** — status per requirement, how each part degrades, measured numbers, divergences, invariant enforcement |
 | [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) | The pitch: problem, product, why it can't run in the cloud, who pays, safety posture, rubric alignment, sources |
 | [`docs/PRD.md`](docs/PRD.md) | Technical execution PRD: goals/non-goals, user stories, architecture, functional requirements, NFRs, demo data, schedule, risks |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Repo layout, SQLite schema, agent tool signatures, model-boundary schemas, egress contract, config |

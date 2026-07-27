@@ -383,7 +383,8 @@ Radiography Database from the USB drive — both CC BY 4.0 and cleared in
 
 ## Related
 
-- **[`docs/ARC.md`](docs/ARC.md)** — what is built, measured numbers, prepared Q&A answers.
-  Read this before the judging round.
+- **[`QNA.md`](QNA.md)** — questions to expect, grouped by who is asking, including the
+  ones where we are weak. Read this before the judging round.
+- **[`docs/ARC.md`](docs/ARC.md)** — what is built, measured numbers, how each part degrades.
 - [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md) — the 5-minute narrative script.
 - [`README.md`](README.md) — install and architecture.
