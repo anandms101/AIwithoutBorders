@@ -1,18 +1,89 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- Live pipeline. Reads left to right, mirrors ARCHITECTURE §4, and lights up
+     as work flows through so the system explains itself without narration. -->
+<div class="pipeline" id="pipeline">
+  <div class="stage" id="st-inbox">
+    <div class="ico">&#128194;</div>
+    <div class="name">Inbox</div>
+    <div class="val">0</div>
+    <div class="sub">watched folder</div>
+  </div>
+  <div class="arrow" id="ar-1">&#10230;</div>
+
+  <div class="stage" id="st-workers">
+    <div class="ico">&#9881;</div>
+    <div class="name">Local models</div>
+    <div class="val">0</div>
+    <div class="sub">speech · vision · retrieval</div>
+  </div>
+  <div class="arrow" id="ar-2">&#10230;</div>
+
+  <div class="stage" id="st-graph">
+    <div class="ico">&#128279;</div>
+    <div class="name">Case graph</div>
+    <div class="val">0</div>
+    <div class="sub">structured fields only</div>
+  </div>
+  <div class="arrow" id="ar-3">&#10230;</div>
+
+  <div class="stage" id="st-heartbeat">
+    <div class="ico">&#9829;</div>
+    <div class="name">Heartbeat</div>
+    <div class="val">30s</div>
+    <div class="sub">cluster thresholds</div>
+  </div>
+  <div class="arrow" id="ar-4">&#10230;</div>
+
+  <div class="stage" id="st-review">
+    <div class="ico">&#128100;</div>
+    <div class="name">Human review</div>
+    <div class="val">0</div>
+    <div class="sub">nothing moves without it</div>
+  </div>
+  <div class="arrow" id="ar-5">&#10230;</div>
+
+  <div class="stage" id="st-egress">
+    <div class="ico">&#128225;</div>
+    <div class="name">Egress</div>
+    <div class="val">0 B</div>
+    <div class="sub">counts only</div>
+  </div>
+</div>
+
+<!-- The doctor workflow: save a file, walk away. -->
+<div class="dropzone" id="dropzone">
+  <div class="big">&#8681; Drop consultation files here</div>
+  <div class="hint">
+    Dictated audio <code>.wav</code> &middot; chest film <code>.jpg</code> <code>.png</code>
+    &middot; written note <code>.txt</code><br>
+    Files sharing a name become one case &mdash; <code>case-0421.wav</code> +
+    <code>case-0421.jpg</code> + <code>case-0421.txt</code>
+  </div>
+  <div class="catchment-row" onclick="event.stopPropagation()">
+    <label for="catchment">Catchment</label>
+    <select id="catchment">
+      <option value="sector-1">sector-1</option>
+      <option value="sector-2">sector-2</option>
+      <option value="sector-4" selected>sector-4</option>
+      <option value="sector-7">sector-7</option>
+      <option value="sector-9">sector-9</option>
+    </select>
+    <span class="hint">assigned at registration, never read from the notes</span>
+  </div>
+  <div id="uploadMsg"></div>
+  <input type="file" id="fileInput" multiple hidden
+         accept=".wav,.m4a,.mp3,.png,.jpg,.jpeg,.txt">
+</div>
+
 <div class="counters">
-  <div class="counter"><div class="v">{{ counters.jobs_queued }}</div><div class="k">Queued</div></div>
-  <div class="counter good"><div class="v">{{ counters.jobs_done }}</div><div class="k">Processed</div></div>
-  {% if counters.jobs_failed %}
-  <div class="counter warn"><div class="v">{{ counters.jobs_failed }}</div><div class="k">Failed</div></div>
-  {% endif %}
-  <div class="counter"><div class="v">{{ counters.cases }}</div><div class="k">Cases</div></div>
-  <div class="counter warn"><div class="v">{{ counters.alerts_pending }}</div><div class="k">Alerts</div></div>
+  <div class="counter"><div class="v">{{ counters.cases }}</div><div class="k">Cases in graph</div></div>
+  <div class="counter warn"><div class="v">{{ counters.alerts_pending }}</div><div class="k">Awaiting review</div></div>
   <div class="counter"><div class="v">{{ '{:,}'.format(counters.bytes_on_box) }}</div><div class="k">Bytes on box</div></div>
   <div class="counter good"><div class="v">{{ counters.bytes_sent }}</div><div class="k">Bytes sent</div></div>
   {% if counters.ratio %}
-  <div class="counter good"><div class="v">{{ '{:,}'.format(counters.ratio) }}:1</div><div class="k">Kept : sent</div></div>
+  <div class="counter hero"><div class="v">{{ '{:,}'.format(counters.ratio) }}:1</div><div class="k">Kept : sent</div></div>
   {% endif %}
 </div>
 
@@ -23,26 +94,28 @@
     <h2>Alerts awaiting review</h2>
     <div class="body">
       {% if not alerts %}
-        <div class="empty">No alerts. Thresholds are calibrated per setting.</div>
+        <div class="empty">
+          No alerts.<br>Thresholds are calibrated per setting.
+        </div>
       {% endif %}
       {% for alert in alerts %}
       <div class="alert {{ alert.severity }}">
         <h3>
-          {{ alert.count if alert.count else alert.case_ids|length }} cases matching
+          {{ alert.case_ids|length }} cases matching
           {{ alert.syndrome_code.replace('_', ' ') }}
         </h3>
         <div class="meta">
           <span class="pill {{ alert.severity }}">{{ alert.severity }}</span>
           {{ alert.catchment }} &middot; {{ alert.window_hours }}h window &middot;
           trend {{ alert.trend or 'stable' }} &middot;
-          <span class="pill {{ alert.rationale_source }}">{{ alert.rationale_source }}</span>
+          rationale <span class="pill {{ alert.rationale_source }}">{{ alert.rationale_source }}</span>
         </div>
         <p>{{ alert.rationale_text }}</p>
         <div class="meta mono">{{ alert.case_ids|join(', ') }}</div>
 
         <div class="note">
-          Approving transmits counts only, to a single allowlisted host.
-          <span id="preview-{{ alert.id }}"></span>
+          <strong>This is everything that would leave the box:</strong>
+          <span id="preview-{{ alert.id }}">&hellip;</span>
         </div>
 
         <div class="actions">
@@ -61,7 +134,7 @@
         <tr><th>Decided</th><th>Syndrome</th><th>Status</th><th>Bytes</th></tr>
         {% for alert in decided %}
         <tr>
-          <td class="mono">{{ alert.decided_at }}</td>
+          <td class="mono">{{ (alert.decided_at or '')[11:19] }}</td>
           <td>{{ alert.syndrome_code.replace('_', ' ') }}</td>
           <td><span class="pill {{ 'done' if alert.status == 'approved' else 'failed' }}">{{ alert.status }}</span></td>
           <td class="mono">{{ alert.bytes_sent or '—' }}</td>
@@ -72,7 +145,7 @@
     </div>
   </div>
 
-  <!-- F-08 trace panel: 30% of the score, so it refreshes on its own -->
+  <!-- F-08 trace panel -->
   <div class="panel">
     <h2>Agent trace &mdash; live</h2>
     <div class="body">
@@ -94,45 +167,97 @@
     </div>
   </div>
 
-  <!-- Inbox -->
+  <!-- Cases -->
   <div class="panel">
-    <h2>Inbox &mdash; grouped into cases</h2>
+    <h2>Cases &mdash; files grouped by patient encounter</h2>
     <div class="body">
       <table>
         <tr><th>Case</th><th>Inputs</th><th>Syndrome</th><th>Status</th></tr>
         {% for case in case_rows %}
         <tr>
           <td><a href="/case/{{ case.case_id }}">{{ case.case_id }}</a></td>
-          <td class="mono">
-            {% if case.has_audio %}<span class="pill done" title="French consultation">audio</span>{% endif %}
+          <td>
+            {% if case.has_audio %}<span class="pill done" title="dictated consultation">audio</span>{% endif %}
             {% if case.has_image %}<span class="pill done" title="chest radiograph">film</span>{% endif %}
             {% if case.has_note %}<span class="pill queued" title="written note">note</span>{% endif %}
           </td>
           <td class="mono">{{ (case.syndrome_code or '—').replace('_', ' ') }}</td>
           <td>
             <span class="pill {{ case.status }}">{{ case.status }}</span>
-            {% if case.error %}<span class="trace-err mono">{{ case.error[:28] }}</span>{% endif %}
+            {% if case.error %}<span class="trace-err mono">{{ case.error[:26] }}</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
       </table>
-      {% if not case_rows %}<div class="empty">Inbox empty. Drop files into the watched folder.</div>{% endif %}
+      {% if not case_rows %}
+      <div class="empty">No cases yet. Drop files above to begin.</div>
+      {% endif %}
     </div>
   </div>
 
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-// Poll rather than websocket: fewer moving parts, and the trace panel must not
-// be the thing that breaks at 16:00.
-async function refreshTrace() {
-  try {
-    const [traceRes, statusRes] = await Promise.all([
-      fetch('/api/trace?limit=40'), fetch('/api/status')
-    ]);
-    const {trace} = await traceRes.json();
-    const status = await statusRes.json();
+const PENDING_AT_LOAD = {{ counters.alerts_pending }};
 
+function setStage(id, value, sub, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.querySelector('.val').textContent = value;
+  if (sub !== null) el.querySelector('.sub').textContent = sub;
+  el.className = 'stage' + (cls ? ' ' + cls : '');
+}
+
+function setArrow(id, flowing) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'arrow' + (flowing ? ' flowing' : '');
+}
+
+async function refresh() {
+  try {
+    const [pRes, tRes, sRes] = await Promise.all([
+      fetch('/api/pipeline'), fetch('/api/trace?limit=40'), fetch('/api/status')
+    ]);
+    const p = await pRes.json();
+    const {trace} = await tRes.json();
+    const status = await sRes.json();
+
+    // --- pipeline ---
+    const queued = p.inbox.queued, running = p.workers.running;
+    setStage('st-inbox', p.inbox.total,
+      queued ? queued + ' waiting' : 'watched folder',
+      queued ? 'active' : (p.inbox.total ? 'done' : ''));
+
+    const processed = p.workers.audio + p.workers.image + p.workers.note;
+    setStage('st-workers', processed,
+      running ? running + ' running now'
+              : `${p.workers.audio} audio · ${p.workers.image} film · ${p.workers.note} note`,
+      running ? 'active' : (processed ? 'done' : ''));
+
+    setStage('st-graph', p.graph.cases, 'structured fields only',
+      p.graph.cases ? 'done' : '');
+
+    setStage('st-heartbeat', p.heartbeat.interval + 's',
+      p.heartbeat.cycles ? `${p.heartbeat.cycles} cycles · last ${p.heartbeat.last_ms}ms`
+                         : 'cluster thresholds',
+      'active');
+
+    setStage('st-review', p.review.pending,
+      p.review.pending ? 'awaiting a human' : 'nothing moves without it',
+      p.review.pending ? 'alertish' : (p.review.approved ? 'done' : ''));
+
+    setStage('st-egress', p.egress.bytes_sent + ' B', 'counts only',
+      p.egress.bytes_sent ? 'done' : '');
+
+    setArrow('ar-1', queued > 0);
+    setArrow('ar-2', running > 0);
+    setArrow('ar-3', running > 0);
+    setArrow('ar-4', p.review.pending > 0);
+    setArrow('ar-5', false);
+
+    // --- trace ---
     const table = document.getElementById('trace');
     if (table && trace.length) {
       const header = table.rows[0].outerHTML;
@@ -149,21 +274,75 @@ async function refreshTrace() {
     }
 
     // A new alert should not require the operator to notice and reload.
-    if (status.alerts_pending !== {{ counters.alerts_pending }}) location.reload();
-  } catch (e) { /* the panel degrades to static; it never throws on screen */ }
+    if (status.alerts_pending !== PENDING_AT_LOAD) location.reload();
+  } catch (e) { /* degrade to static rather than throwing on screen */ }
 }
-setInterval(refreshTrace, 2000);
+setInterval(refresh, 2000);
+refresh();
+
+// --- drag and drop: the doctor workflow ---
+const dz = document.getElementById('dropzone');
+const input = document.getElementById('fileInput');
+const msg = document.getElementById('uploadMsg');
+
+dz.addEventListener('click', () => input.click());
+input.addEventListener('change', () => { if (input.files.length) upload(input.files); });
+
+['dragenter', 'dragover'].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+
+// Without this the browser navigates away when a file is dropped slightly
+// off-target, which on stage looks exactly like a crash.
+['dragover', 'drop'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault()));
+
+dz.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) upload(e.dataTransfer.files);
+});
+
+async function upload(fileList) {
+  const body = new FormData();
+  for (const f of fileList) body.append('files', f);
+  body.append('catchment', document.getElementById('catchment').value);
+
+  msg.style.color = 'var(--muted)';
+  msg.textContent = `Uploading ${fileList.length} file(s)…`;
+
+  try {
+    const res = await fetch('/api/upload', {method: 'POST', body});
+    const data = await res.json();
+
+    const parts = [];
+    if (data.accepted.length) {
+      const cases = [...new Set(data.accepted.map(a => a.case_id))];
+      parts.push(`✓ ${data.accepted.length} file(s) → ${cases.length} case(s) `
+               + `in ${data.catchment}: ${cases.join(', ')}`);
+    }
+    if (data.rejected.length) {
+      parts.push(`✗ rejected: ${data.rejected.map(r => r.filename + ' (' + r.reason + ')').join(', ')}`);
+    }
+    msg.style.color = data.accepted.length ? 'var(--ok)' : 'var(--danger)';
+    msg.textContent = parts.join('  ·  ');
+    refresh();
+    setTimeout(() => { msg.textContent = ''; }, 12000);
+  } catch (err) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = 'Upload failed: ' + err;
+  }
+  input.value = '';
+}
 
 // Show exactly what would leave the box, before anyone approves it.
 {% for alert in alerts %}
 fetch('/api/egress-preview/{{ alert.id }}').then(r => r.json()).then(d => {
   const el = document.getElementById('preview-{{ alert.id }}');
   if (el && d.payload) {
-    el.innerHTML = `<strong>${d.bytes} bytes</strong> of ${d.limit} &rarr; ${d.destination}` +
+    el.innerHTML = `<strong>${d.bytes} bytes</strong> of ${d.limit} allowed &rarr; ${d.destination}` +
       `<pre class="payload">${JSON.stringify(d.payload)}</pre>`;
   }
 }).catch(() => {});
 {% endfor %}
 </script>
-
 {% endblock %}

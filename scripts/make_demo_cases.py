@@ -70,7 +70,57 @@ DEMO_CASES: tuple[tuple[str, str, str, bool], ...] = (
         "vomiting. Chest film requested.",
         False,
     ),
+    # --- Spare cases, held back for live drag-and-drop on stage. ---
+    # Dropping case-0426 during the demo grows the cluster from 3 to 4, which
+    # re-raises the alert and shows the system reacting to new evidence rather
+    # than replaying something prepared earlier.
+    (
+        "case-0426",
+        "sector-4",
+        "Adult male, same settlement as recent presentations. Watery stools "
+        "since dawn, five episodes, no blood. Vomited once. Very thirsty, "
+        "reduced skin turgor. Reports the household draws water from the "
+        "shallow well at the north edge.",
+        True,
+    ),
+    (
+        "case-0427",
+        "sector-4",
+        "Elderly female. Profuse watery stools overnight, unable to keep "
+        "fluids down. Markedly sunken eyes, weak pulse, minimal urine output. "
+        "No blood in the stool. Same water source as neighbouring shelters.",
+        True,
+    ),
+    # Other syndromes in other catchments — the graph holds more than one
+    # story at a time, and none of these disturb the sector-4 cluster.
+    (
+        "case-0428",
+        "sector-7",
+        "Adult with cough for over three weeks, coughing blood on two "
+        "occasions. Drenching night sweats and unintended weight loss over "
+        "the past month. Persistent chest pain. Chest film requested.",
+        False,
+    ),
+    (
+        "case-0429",
+        "sector-2",
+        "Child with fever for two days and a generalised rash that began on "
+        "the face and spread downwards. Red eyes, runny nose and a harsh "
+        "cough. No diarrhoea.",
+        False,
+    ),
+    (
+        "case-0430",
+        "sector-1",
+        "Adult presenting with yellowing of the eyes noticed three days ago. "
+        "Dark urine and pale stools. Loss of appetite, nausea and discomfort "
+        "in the right upper abdomen. Profound fatigue.",
+        False,
+    ),
 )
+
+# Held back from the scripted drop so they can be dragged in live on stage.
+SPARE_CASES = ("case-0426", "case-0427", "case-0428", "case-0429", "case-0430")
 
 
 def main() -> int:
@@ -91,15 +141,20 @@ def main() -> int:
         path = outdir / f"{case_id}.txt"
         path.write_text(note + "\n", encoding="utf-8")
         lines.append(f"{case_id}\t{catchment}")
-        marker = "cluster" if trips else "decoy  "
+        if case_id in SPARE_CASES:
+            marker = "spare  "
+        else:
+            marker = "cluster" if trips else "decoy  "
         print(f"  {marker}  {path.name}  [{catchment}]")
 
     manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    cluster = sum(1 for _, _, _, trips in DEMO_CASES if trips)
+    scripted = [c for c in DEMO_CASES if c[0] not in SPARE_CASES]
+    cluster = sum(1 for _, _, _, trips in scripted if trips)
     print(f"\nWrote {len(DEMO_CASES)} case notes to {outdir}/")
     print(f"  {cluster} designed to trip the threshold (sector-4)")
-    print(f"  {len(DEMO_CASES) - cluster} decoys that must not fire")
+    print(f"  {len(scripted) - cluster} decoys that must not fire")
+    print(f"  {len(SPARE_CASES)} spares held back for live drag-and-drop")
     print(f"  catchment manifest: {manifest}")
     return 0
 

@@ -9,15 +9,16 @@ Timings are measured, not estimated. **Read §0 and §6 before you present.**
 
 ## 0. The two things that will bite you
 
-**1. ASR is slow — 15–20s per recording, and there are four.** After you drop the cases the
-inbox sits at "running" for roughly **90–120 seconds** before the alert appears. That is
-Whisper large-v3 on CPU. It is *not* broken. Fill the time by talking through the trace
-panel, which is populating live the whole while. If you would rather not wait, use
-`--notes-only` (§2, Option B) and the whole thing completes in **under 2 seconds**.
+**1. ASR is slow — 15–20s per recording.** After dropping multimodal cases the pipeline
+sits in "Local models" for **90–120 seconds** before the alert appears. That is Whisper
+large-v3 on CPU. It is *not* broken, and the pipeline strip visibly shows it working the
+whole time. If you would rather not wait, use `--notes-only` (§2, Option B) and the whole
+thing completes in **under 2 seconds**.
 
-**2. OpenClaw narration takes 60–165s and lands *after* the alert.** This is by design, not
-a stall — the alert is written immediately from arithmetic, and OpenClaw only rewords it.
-The panel shows `template` first, then flips to `agent`. §5 turns that into a feature.
+**2. OpenClaw narration takes 60–165s and lands *after* the alert.** By design, not a
+stall — the alert is written immediately from arithmetic and OpenClaw only rewords it. The
+badge shows `template` first, then flips to `agent`. §6 turns that into the strongest
+safety argument you have.
 
 ---
 
@@ -45,8 +46,8 @@ noise rather than an empty table.
 | --- | --- |
 | Browser tab 1 | <http://127.0.0.1:8081/> — the dashboard |
 | Browser tab 2 | <http://127.0.0.1:9000/reports> — the receiver, empty for now |
-| Terminal 1 | for `make drop` |
-| Terminal 2 | `watch -n2 ollama ps` — models resident, `UNTIL = Forever` |
+| File manager | `~/Documents/AIwithoutBorders/demo_cases` — side by side with the browser, for dragging |
+| Terminal | for the locality check in §7 |
 
 If preflight fails it tells you exactly what is wrong. `make stop` then `make demo` clears
 most things. If a port is stuck: `ss -tlnp | grep -E ':8081|:9000'`.
@@ -55,138 +56,164 @@ most things. If a port is stuck: `ss -tlnp | grep -E ':8081|:9000'`.
 
 ## 2. Drop the cases — the one unscripted moment
 
-### Option A — the full multimodal demo (~2 min to alert)
+You have **two ways** to get files in. Do the browser one on camera; it *is* the doctor
+workflow.
+
+### Option A — drag and drop in the browser (the demo)
+
+Open the file manager at `~/Documents/AIwithoutBorders/demo_cases`, put it side by side
+with the dashboard, and **drag files straight onto the drop zone**.
+
+1. Set **Catchment** to `sector-4` on the drop zone.
+2. Drag `case-0421.txt`, `case-0421.wav` and `case-0421.jpg` **together**.
+3. The zone confirms: *3 file(s) → 1 case(s) in sector-4*.
+4. Repeat with `case-0422.*` and `case-0423.*`.
+
+> "Three files — a dictation, a chest film and a note — become one patient encounter,
+> because they share a name. In the field the clinician just saves them. There is no
+> upload button in the tent, and nowhere to upload to."
+
+Point at **Catchment** while you do it:
+
+> "Catchment is assigned at registration. It is never read out of the notes — if a language
+> model could choose which catchment a case counted towards, generated text could
+> manufacture a cluster."
+
+### Option B — the scripted drop (fallback, and faster)
 
 ```bash
-make drop
+make drop                                              # full multimodal, ~2 min
+./scripts/drop_demo_cases.sh --decoys --notes-only     # notes only, ~2 seconds
 ```
 
-```
-==> Dropping cluster cases into ./data/inbox
-    case-0421 -> txt wav jpg
-    case-0422 -> txt wav
-    case-0423 -> txt wav
-==> Dropping decoys (these must NOT trigger an alert)
-    case-0424 -> txt
-    case-0425 -> txt wav jpg
-```
+**Use `--notes-only` if the room is restless.** Same alert, same decoy exclusion, same
+egress — just no audio or films to process.
 
-### Option B — fast path, no waiting (~2 seconds to alert)
+### What lands either way
 
-```bash
-./scripts/drop_demo_cases.sh --decoys --notes-only
+```
+case-0421 -> txt wav jpg     ┐
+case-0422 -> txt wav         ├─ cluster, sector-4
+case-0423 -> txt wav         ┘
+case-0424 -> txt             ─ decoy, sector-9   (same syndrome, wrong place)
+case-0425 -> txt wav jpg     ─ decoy, sector-4   (same place, wrong syndrome)
 ```
 
-Notes only. Everything else is identical — same alert, same decoy exclusion, same egress.
-**Use this if you are short on time or the room is restless.**
-
-### Drag-and-drop instead (more convincing on camera)
-
-The watcher is a real inotify watch on a real folder. Open the file manager at
-`~/Documents/AIwithoutBorders/demo_cases`, open a second window at
-`~/Documents/AIwithoutBorders/data/inbox`, and **drag the files across**. Say:
-
-> "This is a watched folder. In the field a clinician just saves their file here. Nobody
-> presses a button, and there is no upload — there is nowhere to upload to."
-
-Drag `case-0421.txt`, `.wav` and `.jpg` together to show they become **one case**.
+Five more cases (`case-0426` … `case-0430`) are **held back deliberately** for §5.
 
 ---
 
-## 3. The dashboard, panel by panel
+## 3. The dashboard, top to bottom
 
-Point at these in order. Each one is a requirement being met.
+The layout tells the story left to right. Walk it in order.
 
-### Inbox — grouped into cases
-Five cases, each tagged with the modalities that arrived: **`audio` `film` `note`**.
+### The pipeline strip
+Six stages: **Inbox → Local models → Case graph → Heartbeat → Human review → Egress.**
+Each shows a live count and **lights up blue while it is working**; the arrows animate as
+work flows between them.
 
-> "Three files, one case. They group by filename stem, and they dedupe on content hash —
-> drop the same file twice and it will not double-count into a cluster."
+> "That is the whole system. Files arrive, three local models extract from them, only
+> structured fields reach the graph, a heartbeat watches for clusters, a human decides, and
+> the only thing that leaves is a count."
 
-**Show the dedupe live** (it is a strong, cheap moment):
+Read the labels under the stages aloud — they are the guarantees, not decoration:
+*structured fields only*, *nothing moves without it*, *counts only*.
+
+### The header
+**All inference local**, with the resident models and their sizes pulled live from Ollama.
+
+> "Those are the models, on this box, right now. Nothing here calls out."
+
+### Cases — files grouped by patient encounter
+Each row tags the modalities that arrived: **`audio` `film` `note`**.
+
+**Show the dedupe live** — cheap and convincing:
 
 ```bash
 cp demo_cases/case-0421.txt data/inbox/case-0421-copy.txt
 ```
 
-The case count does **not** change. The trace shows `duplicate hash=...`.
+Case count does **not** move. The trace shows `duplicate hash=…`.
 
 ### Agent trace — live, no refresh
-The panel polls every 2 seconds. You will see, in order:
+Polls every 2 seconds:
 
 `enqueue_file` → `transcribe` → `score_film` → `map_presentation` → `write_case` →
 `query_graph` → `raise_alert`
 
-> "Every tool call is logged before it runs and completed after, so a call that hangs or
-> crashes still appears. This table *is* the audit log — it is not debug output we left in."
+> "Every tool call is written before it runs and completed after, so a call that hangs or
+> crashes still appears. This table *is* the audit log."
 
-Errors render in red. There should be none, but if one appears, **point at it** — that is
-the system refusing to hide a failure.
+### Alerts
+One: **3 cases matching acute watery diarrhoea, sector-4, 72h, rising.**
 
-### Alerts — the escalation
-One alert: **3 cases matching acute watery diarrhoea, sector-4, 72h, rising.**
-
-> "Three cases, same syndrome, same catchment, inside 72 hours. Severity comes from the
-> rise over baseline, not the raw count — three means nothing if last week also had three."
-
-Note the wording: *cases matching*, *review recommended*, *thresholds calibrated per
-setting*. **Never** a disease name, never "outbreak".
+Note the wording — *cases matching*, *review recommended*, *thresholds calibrated per
+setting*. Never a disease name.
 
 ### The decoys — the part that proves the threshold is real
-This is the strongest thing on the screen. Click into them.
-
 | Case | Why it does **not** fire |
 | --- | --- |
-| `case-0424` | Same syndrome — but **sector-9**, a different catchment |
-| `case-0425` | Same catchment — but **respiratory**, a different syndrome |
+| `case-0424` | Same syndrome — but **sector-9** |
+| `case-0425` | Same catchment — but **respiratory** |
 
-> "Both were processed. Both were mapped correctly. Neither contributes. If this were
-> hardcoded to fire, these would have tripped it too."
+> "Both processed, both mapped correctly, neither contributes. If this were hardcoded to
+> fire, these would have tripped it."
 
 ### Case detail — click `case-0421`
-Everything multimodal is here:
+- **Audio player** — press play, it is French
+- **French transcript and English translation side by side**
+- **The chest radiograph itself**, with score and findings
 
-- **An audio player** — press play, it is French. *"Recorded by the clinician; it never left the box."*
-- **French transcript and English translation, side by side** — Whisper large-v3, locally.
-- **The actual chest radiograph**, with an abnormality score and findings.
-
-> "Score, not diagnosis. It orders the queue for review. The clinician decides."
-
-**Worth saying:** the note and the recording both map to a syndrome, and the system keeps
-the *stronger* mapping, not the most recent. ASR text is lossier — "selles liquides" came
-back as "liquid saline" — and letting the weaker evidence win just because it finished
-second would have broken cluster detection. We hit that bug and fixed it.
-
-### Byte counters — the number to land
-Top right: **Bytes on box ≈ 3,900,000** vs **Bytes sent 0**.
+> "Score, not diagnosis. It orders the queue. The clinician decides."
 
 ---
 
 ## 4. Approve — the human gate
 
-**Before pressing anything**, point at the box under the alert. It shows the exact payload
-and its size, *before* transmission:
+Under the alert, before you touch anything:
 
 ```json
 {"catchment":"sector-4","count":3,"site_id":"OP-001",
  "syndrome":"acute_watery_diarrhoea","trend":"rising","window_hours":72}
 ```
 
-> **124 bytes.** Six fields. No names, no ages, no free text, no case identifiers — the
-> three case IDs collapsed to the number 3.
+> **124 bytes.** Six fields. No names, no ages, no free text — the three case IDs collapsed
+> to the number 3.
 
-Press **Approve**. Switch to <http://127.0.0.1:9000/reports> — the aggregate has arrived.
+Press **Approve**. The Egress stage lights up. Switch to
+<http://127.0.0.1:9000/reports> — it has arrived.
 
-Back on the dashboard: **Bytes sent 124**, and a **Kept : sent ratio of ~31,000:1**.
+Back on the dashboard: **Bytes sent 124**, and a **Kept : sent** ratio in the thousands.
 
-> "Roughly four megabytes of clinical data stayed. 124 bytes left, after a human approved
-> it. That ratio *is* the product."
+> "Everything stayed. 124 bytes left, after a human approved it. That ratio *is* the
+> product."
 
-Mention **Dismiss** transmits nothing at all.
+**Dismiss** transmits nothing at all.
 
 ---
 
-## 5. Showing OpenClaw
+## 5. The live moment — drag in a new case and watch it react
+
+This is the strongest thing you can do on stage, because it cannot be pre-recorded.
+
+**After approving the first alert**, drag `case-0426.txt`, `.wav` and `.jpg` onto the page
+with catchment `sector-4`.
+
+Watch the pipeline: **Local models** lights up as Whisper, MedGemma and the retriever all
+run. Roughly 90 seconds later a **new alert** appears — now **four** cases.
+
+> "I just added one patient. The cluster grew from three to four and the system raised it
+> again, because there is new evidence a human has not seen. It did *not* re-raise the
+> alert that was already approved — that would be alert fatigue, which is how a
+> surveillance system stops being read."
+
+Spares available: `case-0426`, `case-0427` (grow sector-4), and `case-0428`, `case-0429`,
+`case-0430` (tuberculosis in sector-7, measles-like rash in sector-2, jaundice in
+sector-1 — none disturb the sector-4 cluster).
+
+---
+
+## 6. Showing OpenClaw
 
 Two beats. The first is quick; the second is the interesting one.
 
@@ -229,7 +256,7 @@ That is the strongest safety claim in the project, and this is where you make it
 
 ---
 
-## 6. Locality — the proof
+## 7. Locality — the proof
 
 ```bash
 ./scripts/verify_egress_block.sh
@@ -253,7 +280,7 @@ one gesture.
 
 ---
 
-## 7. Reset between runs
+## 8. Reset between runs
 
 ```bash
 make stop && make demo      # ~40s, fresh background graph
@@ -274,7 +301,7 @@ your demo cluster.
 
 ---
 
-## 8. If something breaks on stage
+## 9. If something breaks on stage
 
 | Symptom | Do this |
 | --- | --- |
@@ -284,18 +311,19 @@ your demo cluster.
 | Rationale stuck on `template` | OpenClaw is slow or absent. **The alert is complete and correct without it** — say so and move on. |
 | Port already bound | `ss -tlnp \| grep -E ':8081\|:9000'`. Port 8080 is the OpenShell gateway, which is why we use 8081. |
 | Total collapse | `make stop && make demo && ./scripts/drop_demo_cases.sh --decoys --notes-only` — under 60s to a working alert. |
+| Drag-and-drop not working | Fall back to `make drop` in a terminal. Same result, same pipeline. |
 
-**Fallback that always works:** `make test` — 233 tests, ~2 seconds, green. If the live demo
+**Fallback that always works:** `make test` — 272 tests, ~3 seconds, green. If the live demo
 dies, run the suite and talk through what it proves.
 
 ---
 
-## 9. Numbers to have memorised
+## 10. Numbers to have memorised
 
 | | |
 | --- | --- |
 | Egress payload | **124 bytes**, 6 fields, limit 1024 |
-| Kept : sent | **~31,000 : 1** with media (1,859:1 notes-only) |
+| Kept : sent | **~31,500 : 1** with media (1,859:1 notes-only) |
 | Alert threshold | ≥3 cases, same syndrome, same catchment, 72h |
 | Idle heartbeat | **<1s** against a 10s budget |
 | Full pipeline, notes only | **769 ms** |
@@ -303,12 +331,13 @@ dies, run the suite and talk through what it proves.
 | One French recording | ~15–20s (CPU) |
 | OpenClaw narration | 60–165s, **off the critical path** |
 | Models resident | ~13.6 GB of a ≤70 GB budget |
-| Tests | **233** + 8 live model tests |
+| Tests | **272** + 8 live model tests |
 | Background graph | 156 synthetic consultations, 14 days |
+| Demo cases | 10 (3 cluster, 2 decoy, 5 spare for live drops) |
 
 ---
 
-## 10. Regenerating demo media
+## 11. Regenerating demo media
 
 Already generated and cached. Only needed on a fresh clone:
 

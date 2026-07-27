@@ -13,11 +13,13 @@ shown doing so.
 from __future__ import annotations
 
 import json
+import re
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
-from fastapi import FastAPI, Request
+import httpx
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -216,3 +218,215 @@ def media_audio(case_id: str) -> FileResponse | JSONResponse:
     if path is None:
         return JSONResponse({"error": "no audio"}, status_code=404)
     return FileResponse(path, media_type="audio/wav")
+
+
+MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+
+# Dots are deliberately excluded: the suffix is validated separately, so a stem
+# never needs one, and excluding them makes a ".." run impossible to construct.
+_SAFE_STEM = re.compile(r"[^A-Za-z0-9_-]")
+
+
+def safe_filename(raw: str) -> str | None:
+    """Reduce a browser-supplied filename to something safe to write.
+
+    Browsers can send anything here, including ``../../etc/passwd`` and NT-style
+    paths. Take the basename only, strip every character outside a conservative
+    whitelist, and re-check the extension against the configured kinds. A
+    filename that survives all that cannot escape the inbox.
+    """
+    if not raw:
+        return None
+
+    # Handle both separators: a Windows client sends backslashes.
+    base = PurePosixPath(raw.replace("\\", "/")).name
+    if not base or base in {".", ".."}:
+        return None
+
+    stem = _SAFE_STEM.sub("_", Path(base).stem).strip("._-")
+    suffix = Path(base).suffix.lower()
+    if not stem or not suffix:
+        return None
+    if settings.kind_for(f"x{suffix}") is None:
+        return None
+
+    return f"{stem[:64]}{suffix}"
+
+
+@app.post("/api/upload")
+async def api_upload(
+    files: list[UploadFile] = File(...),
+    catchment: str = Form(""),
+) -> JSONResponse:
+    """Accept dropped files and place them in the watched inbox.
+
+    Deliberately writes into the same folder the watcher already monitors
+    rather than ingesting directly: the browser is just another way of putting
+    a file in the inbox, so it goes through identical dedupe, case grouping and
+    tracing. One ingest path, not two.
+
+    ``catchment`` comes from the operator, exactly as it would come from a
+    registration desk. It is never parsed out of the consultation text —
+    invariant 5 means nothing a model reads may decide which catchment a case
+    counts towards, or generated prose could steer cluster detection.
+    """
+    settings.ensure_dirs()
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, str]] = []
+
+    for upload in files:
+        name = safe_filename(upload.filename or "")
+        if name is None:
+            rejected.append(
+                {
+                    "filename": upload.filename or "(unnamed)",
+                    "reason": "unsupported file type",
+                }
+            )
+            continue
+
+        payload = await upload.read()
+        if len(payload) > MAX_UPLOAD_BYTES:
+            rejected.append({"filename": name, "reason": "file too large"})
+            continue
+        if not payload:
+            rejected.append({"filename": name, "reason": "empty file"})
+            continue
+
+        target = settings.inbox_dir / name
+        # Written whole, then moved into place. The watcher waits for size to
+        # settle, but an atomic rename removes the race entirely.
+        staging = settings.inbox_dir / f".{name}.part"
+        staging.write_bytes(payload)
+        staging.replace(target)
+
+        accepted.append(
+            {
+                "filename": name,
+                "case_id": Path(name).stem,
+                "kind": settings.kind_for(name),
+                "bytes": len(payload),
+            }
+        )
+
+    clean_catchment = _SAFE_STEM.sub("", catchment.strip())[:32]
+    if accepted and clean_catchment:
+        _record_catchments(
+            {entry["case_id"] for entry in accepted}, clean_catchment
+        )
+
+    return JSONResponse(
+        {
+            "accepted": accepted,
+            "rejected": rejected,
+            "catchment": clean_catchment or settings.site_id,
+        },
+        status_code=200 if accepted else 422,
+    )
+
+
+def _record_catchments(case_ids: set[str], catchment: str) -> None:
+    """Append case -> catchment to the registration manifest.
+
+    The heartbeat reads this when promoting a case into the graph. Without it a
+    browser-uploaded case falls back to the site default and never joins the
+    cluster it belongs to.
+    """
+    manifest = settings.catchment_manifest
+    existing: dict[str, str] = {}
+    if manifest.is_file():
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            if "\t" in line:
+                key, _, value = line.partition("\t")
+                existing[key.strip()] = value.strip()
+
+    for case_id in case_ids:
+        existing[case_id] = catchment
+
+    manifest.write_text(
+        "\n".join(f"{key}\t{value}" for key, value in sorted(existing.items())) + "\n",
+        encoding="utf-8",
+    )
+
+
+@app.get("/api/pipeline")
+def api_pipeline() -> JSONResponse:
+    """Live stage counts driving the pipeline diagram."""
+    with connect(settings) as conn:
+        def scalar(sql: str, args: tuple = ()) -> int:
+            return int(conn.execute(sql, args).fetchone()[0])
+
+        stages = {
+            "inbox": {
+                "queued": scalar("SELECT COUNT(*) FROM jobs WHERE status='queued'"),
+                "total": scalar("SELECT COUNT(DISTINCT case_id) FROM jobs"),
+            },
+            "workers": {
+                "running": scalar("SELECT COUNT(*) FROM jobs WHERE status='running'"),
+                "audio": scalar(
+                    "SELECT COUNT(*) FROM jobs WHERE kind='audio' AND status='done'"
+                ),
+                "image": scalar(
+                    "SELECT COUNT(*) FROM jobs WHERE kind='image' AND status='done'"
+                ),
+                "note": scalar(
+                    "SELECT COUNT(*) FROM jobs WHERE kind='note' AND status='done'"
+                ),
+                "failed": scalar("SELECT COUNT(*) FROM jobs WHERE status='failed'"),
+            },
+            "graph": {
+                "cases": scalar("SELECT COUNT(*) FROM cases"),
+                "nodes": scalar("SELECT COUNT(*) FROM nodes"),
+            },
+            "heartbeat": {
+                "interval": settings.heartbeat_seconds,
+                "cycles": scalar(
+                    "SELECT COUNT(*) FROM trace WHERE tool='cycle_end'"
+                ),
+                "last_ms": scalar(
+                    "SELECT COALESCE((SELECT duration_ms FROM trace"
+                    " WHERE tool='cycle_end' ORDER BY id DESC LIMIT 1), 0)"
+                ),
+            },
+            "review": {
+                "pending": scalar(
+                    "SELECT COUNT(*) FROM alerts WHERE status='pending'"
+                ),
+                "approved": scalar(
+                    "SELECT COUNT(*) FROM alerts WHERE status='approved'"
+                ),
+                "dismissed": scalar(
+                    "SELECT COUNT(*) FROM alerts WHERE status='dismissed'"
+                ),
+            },
+            "egress": {
+                "bytes_sent": scalar(
+                    "SELECT COALESCE(SUM(bytes_sent), 0) FROM alerts"
+                ),
+                "destination": settings.egress_url,
+            },
+        }
+    return JSONResponse(stages)
+
+
+@app.get("/api/models")
+def api_models() -> JSONResponse:
+    """Which models are resident, straight from Ollama.
+
+    Rendered in the header so the locality claim is visible rather than stated.
+    """
+    try:
+        response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=3)
+        response.raise_for_status()
+        models = [
+            {
+                "name": entry.get("name", "?"),
+                "size_gb": round(entry.get("size", 0) / 1e9, 1),
+                "context": entry.get("context_length"),
+            }
+            for entry in response.json().get("models", [])
+        ]
+    except (httpx.HTTPError, ValueError):
+        models = []
+
+    return JSONResponse({"host": settings.ollama_host, "models": models})

@@ -70,11 +70,20 @@ CONSULTATIONS: dict[str, str] = {
         "nocturnes. Pas de diarrhee et pas de vomissement. "
         "Radiographie thoracique demandee."
     ),
+    # Spare, held back for live drag-and-drop. Giving it every modality means
+    # one drag on stage exercises ASR, vision and retrieval at once.
+    "case-0426": (
+        "Patient adulte, secteur quatre, meme campement que les cas recents. "
+        "Selles liquides depuis l aube, cinq episodes, sans sang. "
+        "A vomi une fois. Tres assoiffe, pli cutane persistant. "
+        "Le foyer puise l eau au puits peu profond au nord."
+    ),
 }
 
 # Which cases get a film. case-0425 is the respiratory decoy, so its film is
-# the one that makes the imaging panel meaningful.
-FILMS = {"case-0425": 0, "case-0421": 1}
+# the one that makes the imaging panel meaningful. case-0426 is the live-drag
+# spare and carries all three modalities.
+FILMS = {"case-0425": 0, "case-0421": 1, "case-0426": 2}
 
 
 def synth_audio(outdir: Path) -> int:

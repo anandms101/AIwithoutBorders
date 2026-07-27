@@ -85,7 +85,7 @@ class TestRoutesRespond:
         """A fresh box must render, not 500."""
         html = client.get("/").text
         assert "No alerts" in html
-        assert "Inbox empty" in html
+        assert "No cases yet" in html
 
 
 class TestNoExternalAssets:
@@ -331,6 +331,260 @@ class TestByteCounters:
         assert status["bytes_on_box"] > status["bytes_sent"]
         assert status["ratio"] > 1
         assert "Kept : sent" in client.get("/").text
+
+
+class TestPipelineView:
+    """The pipeline diagram is how a judge reads the system without narration."""
+
+    def test_all_six_stages_render(self, client: TestClient) -> None:
+        html = client.get("/").text
+        for stage in ("st-inbox", "st-workers", "st-graph",
+                      "st-heartbeat", "st-review", "st-egress"):
+            assert f'id="{stage}"' in html
+
+    def test_stage_labels_describe_the_guarantees(self, client: TestClient) -> None:
+        html = client.get("/").text
+        assert "structured fields only" in html
+        assert "nothing moves without it" in html
+        assert "counts only" in html
+
+    def test_pipeline_api_shape(self, client: TestClient) -> None:
+        data = client.get("/api/pipeline").json()
+        assert set(data) == {
+            "inbox", "workers", "graph", "heartbeat", "review", "egress"
+        }
+        assert data["heartbeat"]["interval"] == 1  # test_settings
+        assert data["egress"]["bytes_sent"] == 0
+
+    def test_pipeline_counts_reflect_work(
+        self, client: TestClient, db: sqlite3.Connection
+    ) -> None:
+        db.execute(
+            "INSERT INTO jobs (case_id, path, kind, content_hash, status, enqueued_at)"
+            " VALUES ('c1', '/x.wav', 'audio', 'h1', 'done', datetime('now'))"
+        )
+        db.execute(
+            "INSERT INTO jobs (case_id, path, kind, content_hash, status, enqueued_at)"
+            " VALUES ('c2', '/y.png', 'image', 'h2', 'queued', datetime('now'))"
+        )
+        data = client.get("/api/pipeline").json()
+        assert data["workers"]["audio"] == 1
+        assert data["inbox"]["queued"] == 1
+        assert data["inbox"]["total"] == 2
+
+    def test_models_endpoint_is_local(self, client: TestClient) -> None:
+        data = client.get("/api/models").json()
+        assert "127.0.0.1" in data["host"] or "localhost" in data["host"]
+        assert isinstance(data["models"], list)
+
+
+class TestDragAndDropUpload:
+    """The doctor workflow: save a file, walk away."""
+
+    def test_dropzone_is_present(self, client: TestClient) -> None:
+        html = client.get("/").text
+        assert 'id="dropzone"' in html
+        assert "Drop consultation files here" in html
+
+    def test_upload_lands_in_the_watched_inbox(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        """Uploads must go through the normal ingest path, not a parallel one."""
+        response = client.post(
+            "/api/upload",
+            files=[("files", ("case-9001.txt", b"watery stools", "text/plain"))],
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["accepted"][0]["case_id"] == "case-9001"
+        assert body["accepted"][0]["kind"] == "note"
+
+        landed = test_settings.inbox_dir / "case-9001.txt"
+        assert landed.is_file()
+        assert landed.read_bytes() == b"watery stools"
+
+    def test_multiple_files_group_into_one_case(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        response = client.post(
+            "/api/upload",
+            files=[
+                ("files", ("case-9002.txt", b"note", "text/plain")),
+                ("files", ("case-9002.wav", b"RIFFfake", "audio/wav")),
+                ("files", ("case-9002.jpg", b"\xff\xd8fake", "image/jpeg")),
+            ],
+        )
+        accepted = response.json()["accepted"]
+        assert len({a["case_id"] for a in accepted}) == 1
+        assert {a["kind"] for a in accepted} == {"note", "audio", "image"}
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "../../../etc/passwd",
+            "..%2f..%2fetc%2fpasswd.txt",
+            "/etc/cron.d/evil.txt",
+            "..\\..\\windows\\system32\\evil.txt",
+        ],
+    )
+    def test_path_traversal_cannot_escape_the_inbox(
+        self, client: TestClient, test_settings: Settings, filename: str
+    ) -> None:
+        """Browser-supplied filenames are untrusted input written to disk."""
+        client.post("/api/upload", files=[("files", (filename, b"x", "text/plain"))])
+
+        # Anything written must sit directly in the inbox. Ignore SQLite's own
+        # sidecar files, which legitimately live one level up in the data root.
+        written = [
+            path
+            for path in test_settings.data_root.rglob("*")
+            if path.is_file() and not path.name.startswith("outpost.db")
+        ]
+        for path in written:
+            assert path.parent == test_settings.inbox_dir, (
+                f"{filename!r} escaped to {path}"
+            )
+            # The directory components must be gone, not merely neutralised.
+            assert ".." not in path.name
+            assert "/" not in path.name and "\\" not in path.name
+
+    @pytest.mark.parametrize(
+        "filename", ["scan.dcm", "notes.pdf", "clip.mp4", "payload.sh", "noext"]
+    )
+    def test_unsupported_types_are_rejected(
+        self, client: TestClient, test_settings: Settings, filename: str
+    ) -> None:
+        response = client.post(
+            "/api/upload", files=[("files", (filename, b"x", "application/octet-stream"))]
+        )
+        assert response.status_code == 422
+        assert response.json()["rejected"]
+        assert not (test_settings.inbox_dir / filename).exists()
+
+    def test_empty_file_is_rejected(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/upload", files=[("files", ("case-1.txt", b"", "text/plain"))]
+        )
+        assert response.status_code == 422
+
+    def test_uploaded_file_is_deduped_by_the_watcher(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        """Uploads share the watcher's dedupe because they share its folder."""
+        from outpost import watcher
+
+        for _ in range(2):
+            client.post(
+                "/api/upload",
+                files=[("files", ("case-9003.txt", b"identical", "text/plain"))],
+            )
+        results = watcher.scan_existing(test_settings)
+        queued = [r for r in results if not r.duplicate]
+        assert len(queued) == 1
+
+
+    def test_upload_records_catchment_for_the_graph(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        """A browser-uploaded case must join the right catchment.
+
+        Without this it falls back to the site default and never joins the
+        cluster it belongs to — which silently breaks the drag-and-drop demo.
+        """
+        response = client.post(
+            "/api/upload",
+            files=[("files", ("case-9100.txt", b"watery stools", "text/plain"))],
+            data={"catchment": "sector-4"},
+        )
+        assert response.json()["catchment"] == "sector-4"
+
+        manifest = test_settings.catchment_manifest
+        assert manifest.is_file()
+        assert "case-9100\tsector-4" in manifest.read_text()
+
+    def test_catchment_is_sanitised(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        client.post(
+            "/api/upload",
+            files=[("files", ("case-9101.txt", b"x", "text/plain"))],
+            data={"catchment": "../../evil sector!"},
+        )
+        content = test_settings.catchment_manifest.read_text()
+        assert ".." not in content
+        assert "/" not in content.replace("\n", "")
+
+    def test_manifest_accumulates_across_uploads(
+        self, client: TestClient, test_settings: Settings
+    ) -> None:
+        """A second upload must not wipe the first case's catchment."""
+        for index, sector in ((1, "sector-4"), (2, "sector-9")):
+            client.post(
+                "/api/upload",
+                files=[("files", (f"case-920{index}.txt", b"x", "text/plain"))],
+                data={"catchment": sector},
+            )
+        content = test_settings.catchment_manifest.read_text()
+        assert "case-9201\tsector-4" in content
+        assert "case-9202\tsector-9" in content
+
+    def test_uploaded_case_reaches_the_right_catchment(
+        self, client: TestClient, test_settings: Settings, db: sqlite3.Connection
+    ) -> None:
+        """End to end: upload -> watcher -> heartbeat -> correct catchment."""
+        from outpost import watcher
+        from outpost.agent import heartbeat
+
+        client.post(
+            "/api/upload",
+            files=[("files", ("case-9300.txt", b"profuse watery stools", "text/plain"))],
+            data={"catchment": "sector-7"},
+        )
+        watcher.scan_existing(test_settings, connection=db)
+        heartbeat.process_jobs(connection=db, config=test_settings)
+
+        row = db.execute(
+            "SELECT catchment FROM cases WHERE case_id = 'case-9300'"
+        ).fetchone()
+        assert row is not None, "uploaded case never reached the graph"
+        assert row["catchment"] == "sector-7"
+
+
+class TestSafeFilename:
+    """Unit-level guard on the sanitiser itself."""
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("case-0421.txt", "case-0421.txt"),
+            ("Case_0421.WAV", "Case_0421.wav"),
+            ("/tmp/case-1.png", "case-1.png"),
+            ("../../case-1.txt", "case-1.txt"),
+            ("C:\\temp\\case-1.jpg", "case-1.jpg"),
+            ("weird name!@#.txt", "weird_name.txt"),
+        ],
+    )
+    def test_sanitises(self, raw: str, expected: str) -> None:
+        from outpost.web.app import safe_filename
+
+        assert safe_filename(raw) == expected
+
+    @pytest.mark.parametrize(
+        "raw", ["", "..", ".", "evil.sh", "noextension", "../..", ".hidden"]
+    )
+    def test_rejects(self, raw: str) -> None:
+        from outpost.web.app import safe_filename
+
+        assert safe_filename(raw) is None
+
+    def test_never_returns_a_path(self) -> None:
+        from outpost.web.app import safe_filename
+
+        for raw in ("../../etc/passwd.txt", "a/b/c.txt", "..\\..\\x.txt"):
+            result = safe_filename(raw)
+            if result is not None:
+                assert "/" not in result and "\\" not in result
+                assert not result.startswith(".")
 
 
 class TestConcurrency:
