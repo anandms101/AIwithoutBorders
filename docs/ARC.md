@@ -156,7 +156,7 @@ Taken from real runs on the GB10 box, not estimates.
 | ASR, one French utterance | ~18 s (CPU) |
 | Seeding 10 case definitions | 6.8 s |
 | `reset_demo.sh` | **1.5 s** (budget 60s) |
-| Resident models | medgemma 2.9GB + embeddinggemma 0.68GB + gemma4 10GB ≈ **13.6GB** of a ≤70GB budget |
+| Resident models | medgemma 2.9GB + embeddinggemma 0.68GB + gemma4 8.1GB ≈ **11.7GB** under Ollama, plus Whisper under CTranslate2 — ~13.6GB total of a ≤70GB budget |
 
 ## 6. Divergences from the plan — and why
 
@@ -195,7 +195,7 @@ Not asserted — **checked**.
 | 3. Human gate | `send` has one call site (`approve_alert`), enforced by two grep tests |
 | 4. Triage, never diagnose | Prompt tests assert "do not diagnose" and "not a diagnosis" stay in the vision prompt |
 | 5. Structured fields only | Test greps `alerting.py` for `english_text`, `native_transcript`, `film_findings` — all absent. `cases` has no text column |
-| 6. Models stay resident | `keep_alive=-1` on every request; `ollama ps` shows `UNTIL=Forever` |
+| 6. Models stay resident | `keep_alive=-1` on every Outpost request; `make demo` warms all three Ollama models; `ollama ps` shows `UNTIL=Forever`. OpenClaw's own calls don't set it, so `make keepalive` (systemd, sudo) is the belt-and-braces fix |
 | 7. Durable state | SQLite WAL; `PRAGMA foreign_keys=ON` set explicitly and tested |
 | 8. Every tool call logged | Row written *before* execution and completed after, including on exception |
 

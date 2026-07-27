@@ -36,6 +36,16 @@ Wait for:
     Dashboard : http://127.0.0.1:8081/
 ```
 
+`make demo` warms all three Ollama models on the way up, so `ollama ps` shows them resident
+before anyone asks.
+
+> **One-time, needs sudo — do this before the demo:** `make keepalive`
+>
+> Outpost pins its own model calls, but OpenClaw issues its own and doesn't, so the agent
+> model can drop off `ollama ps` about five minutes after a narration. The systemd drop-in
+> makes keep-alive the server-wide default and fixes it for every caller. Preflight prints
+> a `note` if it isn't set.
+
 Open **<http://127.0.0.1:8081/>**. You should see **156 cases** already in the graph — two
 weeks of synthetic background consultations, so cluster detection runs against realistic
 noise rather than an empty table.
@@ -243,9 +253,16 @@ Two beats. The first is quick; the second is the interesting one.
 ```bash
 openclaw --version
 grep -A2 '"ollama"' ~/.openclaw/openclaw.json | head -4
+ollama ps
 ```
 
-Shows `OpenClaw 2026.7.1-2` pointed at `http://127.0.0.1:11434/v1`. A loopback address.
+Shows `OpenClaw 2026.7.1-2` pointed at `http://127.0.0.1:11434/v1` — a loopback address —
+and three models resident with `UNTIL = Forever`. `make demo` warms them, so this is ready
+before you ask.
+
+> "Three models held in memory permanently, so the heartbeat never pays load time. Whisper
+> is the fourth — it runs under CTranslate2 rather than Ollama, which is why it isn't in
+> that list."
 
 ### Beat 2 — the rationale rewrites itself, live
 
@@ -331,6 +348,7 @@ your demo cluster.
 | Nothing in the inbox | `tail .run/watcher.log`. Restart: `make stop && make demo`. |
 | Approve returns an error | The receiver is down. `curl 127.0.0.1:9000/health`. The alert stays **pending** — nothing is lost, just approve again. |
 | Rationale stuck on `template` | OpenClaw is slow or absent. **The alert is complete and correct without it** — say so and move on. |
+| `ollama ps` shows fewer models than expected | A narration reloaded the agent model on Ollama's default timer. Re-run `make demo`, or `make keepalive` once with sudo to fix it permanently. |
 | Port already bound | `ss -tlnp \| grep -E ':8081\|:9000'`. Port 8080 is the OpenShell gateway, which is why we use 8081. |
 | Total collapse | `make stop && make demo && ./scripts/drop_demo_cases.sh --decoys --notes-only` — under 60s to a working alert. |
 | Drag-and-drop not working | Fall back to `make drop` in a terminal. Same result, same pipeline. |
@@ -352,7 +370,7 @@ dies, run the suite and talk through what it proves.
 | Chest film scored | ~1.6s |
 | One French recording | ~15–20s (CPU) |
 | OpenClaw narration | 60–165s, **off the critical path** |
-| Models resident | ~13.6 GB of a ≤70 GB budget |
+| Models resident | 3 under Ollama (~11.7 GB) + Whisper under CTranslate2 |
 | Tests | **272** + 8 live model tests |
 | Background graph | 156 synthetic consultations, 14 days |
 | Demo cases | 10 (3 cluster, 2 decoy, 5 spare for live drops) |

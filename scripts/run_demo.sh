@@ -143,6 +143,18 @@ else
   dim   "    absent    openclaw — alerts will use the deterministic rationale"
 fi
 
+# OpenClaw issues its own Ollama requests and does not set keep_alive, so a
+# narration reloads the agent model on Ollama's default 5m timer and undoes the
+# warm-up below. Only the server-wide default fixes that for every caller.
+if systemctl show ollama --property=Environment 2>/dev/null | grep -q "OLLAMA_KEEP_ALIVE=-1"; then
+  green "    ok        ollama keep-alive is server-wide"
+else
+  dim   "    note      OLLAMA_KEEP_ALIVE is not set server-wide."
+  dim   "              Outpost pins its own calls, but OpenClaw's do not, so the"
+  dim   "              agent model can drop off 'ollama ps' ~5m after a narration."
+  dim   "              Run 'make keepalive' once (needs sudo) to make it stick."
+fi
+
 for port in "$WEB_PORT" "$RECEIVER_PORT"; do
   if ss -tln 2>/dev/null | grep -q ":$port "; then
     red "    in use    port $port is already bound"
@@ -156,6 +168,36 @@ if [ "$FAIL" != "0" ]; then
   echo ""
   red "Preflight failed. Fix the above and re-run."
   exit 1
+fi
+
+# --------------------------------------------------------------- warm models ---
+#
+# `ollama ps` is on-camera evidence for the co-residency claim, but a model is
+# only listed once it has served a request. Without this the audience sees one
+# or two models and the "four resident" claim looks false. A trivial prompt per
+# model costs a few seconds and makes the claim visibly true.
+#
+# Whisper is not an Ollama model -- it runs under CTranslate2 in the worker
+# process -- so it will never appear in `ollama ps`. Three here is correct.
+echo ""
+echo "==> Warming models (so 'ollama ps' shows them resident)"
+for model in "${OUTPOST_VISION_MODEL:-medgemma:latest}" \
+             "${OUTPOST_AGENT_MODEL:-gemma4:12b}"; do
+  if curl -fsS --max-time 180 "$OLLAMA_HOST_URL/api/generate" \
+       -d "{\"model\":\"$model\",\"prompt\":\"ok\",\"stream\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":4096,\"num_predict\":1}}" \
+       >/dev/null 2>&1; then
+    green "    warm      $model"
+  else
+    dim   "    skipped   $model (not pulled?)"
+  fi
+done
+
+if curl -fsS --max-time 120 "$OLLAMA_HOST_URL/api/embed" \
+     -d "{\"model\":\"${OUTPOST_EMBED_MODEL:-embeddinggemma:300m}\",\"input\":\"ok\",\"keep_alive\":-1}" \
+     >/dev/null 2>&1; then
+  green "    warm      ${OUTPOST_EMBED_MODEL:-embeddinggemma:300m}"
+else
+  dim   "    skipped   ${OUTPOST_EMBED_MODEL:-embeddinggemma:300m}"
 fi
 
 # ------------------------------------------------------------------ start ---

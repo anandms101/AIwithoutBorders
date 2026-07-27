@@ -145,6 +145,12 @@ Four models resident simultaneously so the heartbeat is continuous rather than p
 load on every cycle. That's a memory-capacity requirement. Current footprint is ~13.6 GB
 against a ≤70 GB budget, so there is headroom for larger models.
 
+**"`ollama ps` only shows three models, not four."**
+Correct, and it's not a gap. Three run under Ollama — medgemma, embeddinggemma and gemma4.
+Whisper large-v3 runs under CTranslate2 inside the worker process, so it will never appear
+in `ollama ps`. Four models, two runtimes. `make demo` warms the Ollama three so they are
+all visibly resident with `UNTIL = Forever` before anyone looks.
+
 **"Why not the 120B model?"**
 The box can run it. But the product needs four models hot at once, and co-residency *is*
 the pitch — a 87 GB model starves the other three.
@@ -205,6 +211,7 @@ measure false-positive rates — which is exactly the work per-setting calibrati
 | Alert rule | ≥3 cases, same syndrome, same catchment, 72h — configurable |
 | Can the LLM cause an alert? | No — arithmetic decides, model only phrases |
 | Models | medgemma · whisper large-v3 · embeddinggemma · gemma4 |
+| Runtimes | 3 under Ollama + Whisper under CTranslate2 |
 | Memory | ~13.6 GB of ≤70 GB |
 | Scale | 50k cases → clusters in **19 ms** |
 | Tests | **272** + 8 live model tests |
